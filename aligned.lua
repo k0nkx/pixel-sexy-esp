@@ -1,0 +1,832 @@
+do
+    if ESP and ESP.Destroy then
+        ESP:Destroy()
+    end
+    ESP = nil
+    
+    local CoreGui = game:GetService("CoreGui")
+    local folder = CoreGui:FindFirstChild("Folder")
+    if folder then
+        for _, gui in ipairs(folder:GetChildren()) do
+            if gui:IsA("ScreenGui") and gui.Name:find("ESP_") then
+                gui:Destroy()
+            end
+        end
+    end
+end
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
+local Camera = Workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+
+if _G.ESPInstance and _G.ESPInstance.Destroy then
+    _G.ESPInstance:Destroy()
+end
+
+ESP = {}
+ESP.__index = ESP
+
+ESP.Players = {}
+ESP.Connections = {}
+ESP.HealthStates = {}
+ESP.Gui = nil
+ESP.Running = false
+ESP.LoopConnection = nil
+ESP.UpdateRate = 0
+ESP.LastUpdate = 0
+
+ESP.Settings = {
+    Enabled = true,
+    Keybind = Enum.KeyCode.End,
+    TestingMode = false,
+    TeamCheck = false,
+    MaxDistance = 5000,
+    
+    Box = {
+        Enabled = true,
+        Color = Color3.new(1, 1, 1),
+        Thickness = 1,
+        Transparency = 0,
+        Filled = false,
+        FilledTransparency = 0.25,
+        Inset = 0.04,
+        TeamColor = true,
+    },
+    
+    Outline = {
+        Enabled = true,
+        Color = Color3.new(0, 0, 0),
+        Thickness = 1,
+        Transparency = 0,
+    },
+    
+    HealthBar = {
+        Enabled = true,
+        Width = 2,
+        Offset = 4,
+        Smoothness = 0.1,
+        Background = Color3.new(1, 1, 1),
+        BackgroundTransparency = 0,
+        OutlineColor = Color3.new(0, 0, 0),
+        OutlineTransparency = 0,
+        UseGradient = true,
+        DynamicColor = false,
+        DynamicColorHigh = Color3.new(0, 1, 0),
+        DynamicColorMedium = Color3.new(1, 1, 0),
+        DynamicColorLow = Color3.new(1, 0, 0),
+        
+        Gradient = {
+            Colors = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Color3.new(1, 0, 0.5)),
+                ColorSequenceKeypoint.new(0.15, Color3.new(1, 0.412, 0.706)),
+                ColorSequenceKeypoint.new(0.5, Color3.new(0.847, 0.749, 0.847)),
+                ColorSequenceKeypoint.new(0.55, Color3.new(0.847, 0.749, 0.847)),
+                ColorSequenceKeypoint.new(1, Color3.new(0.58, 0, 0.827))
+            }),
+            Rotation = 90,
+            LerpAnimation = true,
+            LerpSpeed = 0.028,
+        },
+    },
+    
+    HealthText = {
+        Enabled = true,
+        Size = 10,
+        Offset = 25,
+        Color = Color3.new(1, 1, 1),
+        StaticColor = Color3.fromRGB(255, 255, 255),
+        UseDynamicColor = true,
+        Transparency = 0,
+        ShowOutline = true,
+        OutlineColor = Color3.new(0, 0, 0),
+        OutlineTransparency = 0,
+        FollowBar = false,
+    },
+    
+    NameTag = {
+        Enabled = true,
+        Font = Enum.Font.SourceSansSemibold,
+        Size = 12,
+        Color = Color3.new(1, 1, 1),
+        Transparency = 0,
+        UseDisplayName = true,
+        Offset = Vector2.new(0, -18),
+        ShowOutline = true,
+        OutlineColor = Color3.new(0, 0, 0),
+        OutlineTransparency = 0,
+    },
+    
+    Distance = {
+        Enabled = true,
+        Font = Enum.Font.DenkOne,
+        Size = 12,
+        Color = Color3.new(1, 1, 1),
+        Transparency = 1,
+        Offset = Vector2.new(0, 4),
+        ShowOutline = true,
+        OutlineColor = Color3.new(0, 0, 0),
+        OutlineTransparency = 0,
+    },
+    
+    Character = {
+        ExcludeAccessories = true,
+        MaxLimbDistance = 5,
+    },
+}
+
+function ESP:GetHealthColor(percent)
+    percent = math.clamp(percent, 0, 1)
+    if percent < 0.5 then
+        return Color3.new(1, 0, 0):Lerp(Color3.new(1, 1, 0), percent * 2)
+    else
+        return Color3.new(1, 1, 0):Lerp(Color3.new(0, 1, 0), (percent - 0.5) * 2)
+    end
+end
+
+function ESP:GetDynamicHealthColor(percent)
+    percent = math.clamp(percent, 0, 1)
+    
+    if percent >= 0.5 then
+        -- 100% to 50%: Green to Yellow
+        local t = (percent - 0.5) * 2  -- t goes from 0 to 1 as health goes from 50% to 100%
+        return self.Settings.HealthBar.DynamicColorMedium:Lerp(self.Settings.HealthBar.DynamicColorHigh, t)
+    else
+        -- 50% to 0%: Yellow to Red
+        local t = percent * 2  -- t goes from 0 to 1 as health goes from 0% to 50%
+        return self.Settings.HealthBar.DynamicColorLow:Lerp(self.Settings.HealthBar.DynamicColorMedium, t)
+    end
+end
+
+function ESP:CreateGui()
+    if self.Gui and self.Gui.Parent then
+        self.Gui:Destroy()
+    end
+    
+    self.Gui = Instance.new("ScreenGui")
+    self.Gui.Name = "ESP_" .. tostring(math.random(10000, 99999))
+    self.Gui.DisplayOrder = 9e9
+    self.Gui.ResetOnSpawn = false
+    
+    local folder = CoreGui:FindFirstChild("Folder")
+    if folder then
+        self.Gui.Parent = folder
+    else
+        self.Gui.Parent = gethui and gethui() or CoreGui
+    end
+end
+
+function ESP:CleanupPlayer(player)
+    if self.Players[player] then
+        for _, obj in pairs(self.Players[player]) do
+            if typeof(obj) == "Instance" then
+                obj:Destroy()
+            end
+        end
+        self.Players[player] = nil
+    end
+end
+
+local PopInInfo = TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+function ESP:AnimatePopIn(label)
+    if not self.Running then return end
+    label.TextSize = 1
+    label.TextTransparency = 1
+    TweenService:Create(label, PopInInfo, {TextSize = label.TextSize, TextTransparency = 0}):Play()
+end
+
+function ESP:CreateBox(player)
+    local box = {}
+    
+    local teamColor = player.Team and player.Team.TeamColor.Color or self.Settings.Box.Color
+    local boxColor = self.Settings.Box.TeamColor and teamColor or self.Settings.Box.Color
+    
+    local colors = {self.Settings.Outline.Color, boxColor, self.Settings.Outline.Color}
+    local names = {"Outer", "Main", "Inner"}
+    
+    for i = 1, 3 do
+        local frame = Instance.new("Frame")
+        frame.Name = names[i]
+        frame.BackgroundTransparency = 1
+        frame.Visible = self.Settings.Box.Enabled
+        frame.Parent = self.Gui
+        
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = colors[i]
+        stroke.Thickness = i == 2 and self.Settings.Box.Thickness or self.Settings.Outline.Thickness
+        stroke.Transparency = i == 2 and self.Settings.Box.Transparency or self.Settings.Outline.Transparency
+        stroke.Parent = frame
+        
+        if self.Settings.Box.Filled and i == 2 then
+            frame.BackgroundColor3 = boxColor
+            frame.BackgroundTransparency = self.Settings.Box.FilledTransparency
+        end
+        
+        box[names[i]] = frame
+    end
+    
+    if self.Settings.HealthBar.Enabled then
+        local healthBg = Instance.new("Frame")
+        healthBg.Name = "HealthBg"
+        healthBg.BackgroundColor3 = self.Settings.HealthBar.Background
+        healthBg.BackgroundTransparency = self.Settings.HealthBar.BackgroundTransparency
+        healthBg.BorderSizePixel = 0
+        healthBg.Visible = self.Settings.HealthBar.Enabled
+        healthBg.Parent = self.Gui
+        
+        if self.Settings.HealthBar.UseGradient then
+            local gradient = Instance.new("UIGradient")
+            gradient.Color = self.Settings.HealthBar.Gradient.Colors
+            gradient.Rotation = self.Settings.HealthBar.Gradient.Rotation
+            gradient.Parent = healthBg
+            box.HealthGradient = gradient
+        else
+            healthBg.BackgroundColor3 = self.Settings.HealthBar.Background
+        end
+        
+        local healthMask = Instance.new("Frame")
+        healthMask.Name = "HealthMask"
+        healthMask.BackgroundColor3 = Color3.new(0, 0, 0)
+        healthMask.BackgroundTransparency = 0.3
+        healthMask.BorderSizePixel = 0
+        healthMask.Parent = healthBg
+        healthMask.ZIndex = healthBg.ZIndex + 1
+        
+        local healthBgStroke = Instance.new("UIStroke")
+        healthBgStroke.Color = self.Settings.HealthBar.OutlineColor
+        healthBgStroke.Thickness = 1
+        healthBgStroke.Transparency = self.Settings.HealthBar.OutlineTransparency
+        healthBgStroke.Parent = healthBg
+        
+        box.HealthBg = healthBg
+        box.HealthMask = healthMask
+    end
+    
+    if self.Settings.NameTag.Enabled then
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Name = "NameLabel"
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = ""
+        nameLabel.TextColor3 = self.Settings.NameTag.Color
+        nameLabel.TextSize = self.Settings.NameTag.Size
+        nameLabel.Font = self.Settings.NameTag.Font
+        nameLabel.TextTransparency = self.Settings.NameTag.Transparency
+        nameLabel.TextStrokeTransparency = self.Settings.NameTag.ShowOutline and self.Settings.NameTag.OutlineTransparency or 1
+        nameLabel.TextStrokeColor3 = self.Settings.NameTag.OutlineColor
+        nameLabel.Visible = self.Settings.NameTag.Enabled
+        nameLabel.Parent = self.Gui
+        box.NameLabel = nameLabel
+    end
+    
+    if self.Settings.HealthText.Enabled then
+        local healthText = Instance.new("TextLabel")
+        healthText.Name = "HealthText"
+        healthText.BackgroundTransparency = 1
+        healthText.Text = ""
+        healthText.TextColor3 = self.Settings.HealthText.StaticColor
+        healthText.TextSize = self.Settings.HealthText.Size
+        healthText.Font = Enum.Font.SourceSans
+        healthText.TextTransparency = self.Settings.HealthText.Transparency
+        healthText.TextStrokeTransparency = self.Settings.HealthText.ShowOutline and self.Settings.HealthText.OutlineTransparency or 1
+        healthText.TextStrokeColor3 = self.Settings.HealthText.OutlineColor
+        healthText.TextXAlignment = Enum.TextXAlignment.Right
+        healthText.Visible = self.Settings.HealthText.Enabled
+        healthText.Parent = self.Gui
+        box.HealthText = healthText
+    end
+    
+    if self.Settings.Distance.Enabled then
+        local distanceLabel = Instance.new("TextLabel")
+        distanceLabel.Name = "DistanceLabel"
+        distanceLabel.BackgroundTransparency = 1
+        distanceLabel.Text = ""
+        distanceLabel.TextColor3 = self.Settings.Distance.Color
+        distanceLabel.TextSize = self.Settings.Distance.Size
+        distanceLabel.Font = self.Settings.Distance.Font
+        distanceLabel.TextTransparency = self.Settings.Distance.Transparency
+        distanceLabel.TextStrokeTransparency = self.Settings.Distance.ShowOutline and self.Settings.Distance.OutlineTransparency or 1
+        distanceLabel.TextStrokeColor3 = self.Settings.Distance.OutlineColor
+        distanceLabel.TextXAlignment = Enum.TextXAlignment.Center
+        distanceLabel.Visible = self.Settings.Distance.Enabled
+        distanceLabel.Parent = self.Gui
+        box.DistanceLabel = distanceLabel
+    end
+    
+    box.VisualHealth = 1
+    
+    return box
+end
+
+function ESP:SetBoxVisible(box, visible)
+    if not box then return end
+    
+    if self.Settings.Box.Enabled then
+        if box.Outer then box.Outer.Visible = visible end
+        if box.Main then box.Main.Visible = visible end
+        if box.Inner then box.Inner.Visible = visible end
+    end
+    
+    if self.Settings.HealthBar.Enabled and box.HealthBg then
+        box.HealthBg.Visible = visible
+    end
+    
+    if self.Settings.NameTag.Enabled and box.NameLabel then
+        box.NameLabel.Visible = visible
+    end
+    
+    if self.Settings.HealthText.Enabled and box.HealthText then
+        box.HealthText.Visible = visible
+    end
+end
+
+function ESP:GetCharacterCenter(char)
+    if not char then return nil end
+    
+    local parts = {}
+    for _, part in ipairs(char:GetChildren()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            table.insert(parts, part)
+        end
+    end
+    
+    if #parts == 0 then
+        return nil
+    end
+    
+    local totalX, totalY, totalZ = 0, 0, 0
+    for _, part in ipairs(parts) do
+        totalX = totalX + part.Position.X
+        totalY = totalY + part.Position.Y
+        totalZ = totalZ + part.Position.Z
+    end
+    
+    return Vector3.new(totalX / #parts, totalY / #parts, totalZ / #parts)
+end
+
+function ESP:GetCharacterBoundingBox(char)
+    if not char then return nil end
+    
+    -- Collect all body parts EXCEPT HumanoidRootPart
+    local parts = {}
+    for _, part in ipairs(char:GetChildren()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            if not self.Settings.Character.ExcludeAccessories or not part:IsA("Accoutrement") then
+                table.insert(parts, part)
+            end
+        end
+    end
+    
+    if #parts == 0 then
+        return nil
+    end
+    
+    -- Calculate initial bounding box
+    local minX, minY, minZ = math.huge, math.huge, math.huge
+    local maxX, maxY, maxZ = -math.huge, -math.huge, -math.huge
+    
+    for _, part in ipairs(parts) do
+        local size = part.Size
+        local position = part.Position
+        local halfSize = size / 2
+        
+        minX = math.min(minX, position.X - halfSize.X)
+        minY = math.min(minY, position.Y - halfSize.Y)
+        minZ = math.min(minZ, position.Z - halfSize.Z)
+        
+        maxX = math.max(maxX, position.X + halfSize.X)
+        maxY = math.max(maxY, position.Y + halfSize.Y)
+        maxZ = math.max(maxZ, position.Z + halfSize.Z)
+    end
+    
+    -- Apply MaxLimbDistance filter
+    local centerX = (minX + maxX) / 2
+    local centerY = (minY + maxY) / 2
+    local centerZ = (minZ + maxZ) / 2
+    local centerPos = Vector3.new(centerX, centerY, centerZ)
+    
+    local newMinX, newMinY, newMinZ = math.huge, math.huge, math.huge
+    local newMaxX, newMaxY, newMaxZ = -math.huge, -math.huge, -math.huge
+    local anyValid = false
+    
+    for _, part in ipairs(parts) do
+        local distance = (part.Position - centerPos).Magnitude
+        if distance <= self.Settings.Character.MaxLimbDistance then
+            anyValid = true
+            local size = part.Size
+            local position = part.Position
+            local halfSize = size / 2
+            
+            newMinX = math.min(newMinX, position.X - halfSize.X)
+            newMinY = math.min(newMinY, position.Y - halfSize.Y)
+            newMinZ = math.min(newMinZ, position.Z - halfSize.Z)
+            
+            newMaxX = math.max(newMaxX, position.X + halfSize.X)
+            newMaxY = math.max(newMaxY, position.Y + halfSize.Y)
+            newMaxZ = math.max(newMaxZ, position.Z + halfSize.Z)
+        end
+    end
+    
+    -- If no valid parts, use original bounding box
+    if not anyValid then
+        newMinX, newMinY, newMinZ = minX, minY, minZ
+        newMaxX, newMaxY, newMaxZ = maxX, maxY, maxZ
+    end
+    
+    -- Add buffer
+    local buffer = 0.1
+    newMinX = newMinX - buffer
+    newMinY = newMinY - buffer
+    newMinZ = newMinZ - buffer
+    newMaxX = newMaxX + buffer
+    newMaxY = newMaxY + buffer
+    newMaxZ = newMaxZ + buffer
+    
+    local center = Vector3.new((newMinX + newMaxX) / 2, (newMinY + newMaxY) / 2, (newMinZ + newMaxZ) / 2)
+    local size = Vector3.new(newMaxX - newMinX, newMaxY - newMinY, newMaxZ - newMinZ)
+    
+    if size.Magnitude < 0.1 then
+        return nil
+    end
+    
+    return CFrame.new(center), size
+end
+
+function ESP:Update()
+    if not self.Running or not self.Settings.Enabled then
+        if self.Gui then
+            self.Gui.Enabled = false
+        end
+        return
+    end
+    
+    local now = tick()
+    if now - self.LastUpdate < self.UpdateRate then
+        return
+    end
+    self.LastUpdate = now
+    
+    if self.Gui then
+        self.Gui.Enabled = true
+    end
+    
+    local localChar = LocalPlayer.Character
+    local localTeam = LocalPlayer.Team
+    
+    local playersToProcess = {}
+    
+    if self.Settings.TestingMode then
+        table.insert(playersToProcess, LocalPlayer)
+    end
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if not self.Running then break end
+        table.insert(playersToProcess, player)
+    end
+    
+    for _, player in ipairs(playersToProcess) do
+        if not self.Running then break end
+        
+        local skipCheck = (player == LocalPlayer and self.Settings.TestingMode)
+        
+        if not skipCheck and player == LocalPlayer then
+            self:CleanupPlayer(player)
+            continue
+        end
+        
+        if not skipCheck and self.Settings.TeamCheck and player.Team == localTeam then
+            self:CleanupPlayer(player)
+            continue
+        end
+        
+        local char = player.Character
+        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+        
+        -- Find ANY body part instead of just HRP for existence check
+        local anyBodyPart = char and (char:FindFirstChild("Head") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso"))
+        
+        if not char or not anyBodyPart or not humanoid or humanoid.Health <= 0 then
+            self:CleanupPlayer(player)
+            continue
+        end
+        
+        -- Calculate character center for distance check WITHOUT using HRP
+        local charCenter = self:GetCharacterCenter(char)
+        local localCenter = self:GetCharacterCenter(localChar)
+        
+        if not skipCheck and localCenter then
+            local distance = (localCenter - charCenter).Magnitude
+            if distance > self.Settings.MaxDistance then
+                self:CleanupPlayer(player)
+                continue
+            end
+        end
+        
+        local box = self.Players[player]
+        
+        local cframe, size = self:GetCharacterBoundingBox(char)
+        if not cframe then
+            self:CleanupPlayer(player)
+            continue
+        end
+        
+        local halfSize = size / 2
+        local corners = {
+            cframe * Vector3.new(halfSize.X, halfSize.Y, halfSize.Z),
+            cframe * Vector3.new(halfSize.X, halfSize.Y, -halfSize.Z),
+            cframe * Vector3.new(halfSize.X, -halfSize.Y, halfSize.Z),
+            cframe * Vector3.new(halfSize.X, -halfSize.Y, -halfSize.Z),
+            cframe * Vector3.new(-halfSize.X, halfSize.Y, halfSize.Z),
+            cframe * Vector3.new(-halfSize.X, halfSize.Y, -halfSize.Z),
+            cframe * Vector3.new(-halfSize.X, -halfSize.Y, halfSize.Z),
+            cframe * Vector3.new(-halfSize.X, -halfSize.Y, -halfSize.Z)
+        }
+        
+        local left, top = math.huge, math.huge
+        local right, bottom = -math.huge, -math.huge
+        local onScreen = false
+        
+        for _, corner in ipairs(corners) do
+            local screenPos, visible = Camera:WorldToScreenPoint(corner)
+            if visible then
+                onScreen = true
+                left = math.min(left, screenPos.X)
+                top = math.min(top, screenPos.Y)
+                right = math.max(right, screenPos.X)
+                bottom = math.max(bottom, screenPos.Y)
+            end
+        end
+        
+        if onScreen then
+            if not box then
+                box = self:CreateBox(player)
+                self.Players[player] = box
+                if self.Settings.Distance.Enabled and box.DistanceLabel then
+                    self:AnimatePopIn(box.DistanceLabel)
+                end
+            end
+            
+            self:SetBoxVisible(box, true)
+            
+            left = math.floor(left)
+            top = math.floor(top)
+            right = math.ceil(right)
+            bottom = math.ceil(bottom)
+            
+            local inset = (bottom - top) * self.Settings.Box.Inset
+            left = left + inset
+            top = top + inset
+            right = right - inset
+            bottom = bottom - inset
+            
+            local width = right - left
+            local height = bottom - top
+            local boxTopY = top - 1
+            local totalBoxHeight = height + 2
+            
+            if self.Settings.Box.Enabled and box.Main then
+                if box.Outer then
+                    box.Outer.Position = UDim2.new(0, left - 1, 0, boxTopY)
+                    box.Outer.Size = UDim2.new(0, width + 2, 0, totalBoxHeight)
+                end
+                
+                if box.Main then
+                    box.Main.Position = UDim2.new(0, left, 0, top)
+                    box.Main.Size = UDim2.new(0, width, 0, height)
+                end
+                
+                if box.Inner then
+                    box.Inner.Position = UDim2.new(0, left + 1, 0, top + 1)
+                    box.Inner.Size = UDim2.new(0, width - 2, 0, height - 2)
+                end
+                
+                local teamColor = player.Team and player.Team.TeamColor.Color or self.Settings.Box.Color
+                local boxColor = self.Settings.Box.TeamColor and not (self.Settings.TestingMode and player == LocalPlayer) and teamColor or self.Settings.Box.Color
+                
+                if box.Main and box.Main:FindFirstChild("UIStroke") then
+                    box.Main.UIStroke.Color = boxColor
+                end
+                if box.Main and self.Settings.Box.Filled then
+                    box.Main.BackgroundColor3 = boxColor
+                end
+                
+                if box.Main and box.Main:FindFirstChild("UIStroke") then
+                    box.Main.UIStroke.Thickness = self.Settings.Box.Thickness
+                end
+            end
+            
+            local healthPercent, healthValue
+            if self.Settings.TestingMode then
+                healthPercent = math.abs(math.sin(tick()))
+                healthValue = math.floor(healthPercent * 100)
+            else
+                healthPercent = humanoid.Health / humanoid.MaxHealth
+                healthValue = math.floor(humanoid.Health)
+            end
+            
+            local healthState = self.HealthStates[player]
+            if not healthState then
+                healthState = {health = healthPercent}
+                self.HealthStates[player] = healthState
+            end
+            
+            if self.Settings.HealthBar.Gradient.LerpAnimation and self.Settings.HealthBar.UseGradient then
+                healthState.health = healthState.health + (healthPercent - healthState.health) * self.Settings.HealthBar.Gradient.LerpSpeed
+                box.VisualHealth = healthState.health
+            else
+                box.VisualHealth = healthPercent
+            end
+            
+            if self.Settings.HealthBar.Enabled and box.HealthBg then
+                box.HealthBg.Position = UDim2.new(0, left - self.Settings.HealthBar.Width - self.Settings.HealthBar.Offset, 0, boxTopY)
+                box.HealthBg.Size = UDim2.new(0, self.Settings.HealthBar.Width, 0, totalBoxHeight)
+                
+                local maskHeight = totalBoxHeight * (1 - box.VisualHealth)
+                box.HealthMask.Size = UDim2.new(1, 0, 0, maskHeight)
+                
+                if not self.Settings.HealthBar.UseGradient and self.Settings.HealthBar.DynamicColor then
+                    local dynamicColor = self:GetDynamicHealthColor(healthPercent)
+                    box.HealthBg.BackgroundColor3 = dynamicColor
+                elseif not self.Settings.HealthBar.UseGradient then
+                    box.HealthBg.BackgroundColor3 = self.Settings.HealthBar.Background
+                end
+            end
+            
+            if self.Settings.NameTag.Enabled and box.NameLabel then
+                if self.Settings.TestingMode and player == LocalPlayer then
+                    box.NameLabel.Text = "[TEST] " .. (self.Settings.NameTag.UseDisplayName and player.DisplayName or player.Name)
+                else
+                    box.NameLabel.Text = self.Settings.NameTag.UseDisplayName and player.DisplayName or player.Name
+                end
+                box.NameLabel.Position = UDim2.new(0, left - 1, 0, top - 18)
+                box.NameLabel.Size = UDim2.new(0, width + 2, 0, self.Settings.NameTag.Size + 4)
+                box.NameLabel.TextColor3 = self.Settings.NameTag.Color
+                box.NameLabel.TextSize = self.Settings.NameTag.Size
+            end
+            
+            if self.Settings.HealthText.Enabled and box.HealthText then
+                if self.Settings.TestingMode then
+                    box.HealthText.Text = tostring(healthValue) .. "%"
+                else
+                    box.HealthText.Text = tostring(healthValue)
+                end
+                
+                -- Set health text color based on UseDynamicColor setting
+                if self.Settings.HealthText.UseDynamicColor then
+                    box.HealthText.TextColor3 = self:GetHealthColor(healthPercent)
+                else
+                    box.HealthText.TextColor3 = self.Settings.HealthText.StaticColor
+                end
+                
+                if self.Settings.HealthText.FollowBar then
+                    local maskHeight = totalBoxHeight * (1 - box.VisualHealth)
+                    local healthTextY = boxTopY + maskHeight + 3 - (self.Settings.HealthText.Size / 2)
+                    box.HealthText.Position = UDim2.new(0, left - self.Settings.HealthBar.Width - self.Settings.HealthText.Offset, 0, healthTextY)
+                else
+                    local healthTextY = boxTopY + (totalBoxHeight * 0.001) - (self.Settings.HealthText.Size / 2)
+                    box.HealthText.Position = UDim2.new(0, left - self.Settings.HealthBar.Width - self.Settings.HealthText.Offset, 0, healthTextY)
+                end
+                
+                box.HealthText.Size = UDim2.new(0, 18, 0, self.Settings.HealthText.Size + 4)
+                box.HealthText.TextSize = self.Settings.HealthText.Size
+            end
+            
+            if self.Settings.Distance.Enabled and box.DistanceLabel then
+                local firstLabelY = bottom + self.Settings.Distance.Offset.Y - 5
+                box.DistanceLabel.Position = UDim2.new(0, left - 1, 0, firstLabelY)
+                box.DistanceLabel.Size = UDim2.new(0, width + 2, 0, self.Settings.Distance.Size + 4)
+                
+                if localCenter then
+                    local distance = math.floor((localCenter - charCenter).Magnitude)
+                    box.DistanceLabel.Text = "[" .. distance .. "]"
+                    box.DistanceLabel.Visible = true
+                    box.DistanceLabel.TextColor3 = self.Settings.Distance.Color
+                    box.DistanceLabel.TextSize = self.Settings.Distance.Size
+                else
+                    box.DistanceLabel.Visible = false
+                end
+            end
+            
+        else
+            if box then
+                self:SetBoxVisible(box, false)
+                if self.Settings.Distance.Enabled and box.DistanceLabel then
+                    box.DistanceLabel.Visible = false
+                end
+            end
+        end
+    end
+end
+
+function ESP:Start()
+    if self.Running then 
+        self:Stop()
+        task.wait(0.1)
+    end
+    
+    self.Running = true
+    self:CreateGui()
+    
+    self.Connections.PlayerRemoving = Players.PlayerRemoving:Connect(function(player)
+        self:CleanupPlayer(player)
+    end)
+    
+    if self.LoopConnection then
+        self.LoopConnection:Disconnect()
+    end
+    
+    self.LoopConnection = RunService.RenderStepped:Connect(function()
+        self:Update()
+    end)
+end
+
+function ESP:Stop()
+    self.Running = false
+    
+    for key, connection in pairs(self.Connections) do
+        if typeof(connection) == "RBXScriptConnection" then
+            connection:Disconnect()
+        end
+        self.Connections[key] = nil
+    end
+    
+    if self.LoopConnection then
+        self.LoopConnection:Disconnect()
+        self.LoopConnection = nil
+    end
+    
+    for player, box in pairs(self.Players) do
+        self:CleanupPlayer(player)
+    end
+    self.Players = {}
+    self.HealthStates = {}
+    
+    if self.Gui and self.Gui.Parent then
+        self.Gui:Destroy()
+        self.Gui = nil
+    end
+end
+
+function ESP:UpdateSettings(newSettings)
+    for key, value in pairs(newSettings) do
+        if self.Settings[key] ~= nil then
+            if typeof(value) == "table" then
+                for subKey, subValue in pairs(value) do
+                    if self.Settings[key][subKey] ~= nil then
+                        self.Settings[key][subKey] = subValue
+                    end
+                end
+            else
+                self.Settings[key] = value
+            end
+        end
+    end
+    
+    for player, box in pairs(self.Players) do
+        self:CleanupPlayer(player)
+    end
+end
+
+function ESP:Toggle(state)
+    if state == nil then
+        self.Settings.Enabled = not self.Settings.Enabled
+    else
+        self.Settings.Enabled = state
+    end
+end
+
+function ESP:Destroy()
+    self:Stop()
+    
+    local folder = CoreGui:FindFirstChild("Folder")
+    if folder then
+        for _, gui in ipairs(folder:GetChildren()) do
+            if gui:IsA("ScreenGui") and gui.Name:find("ESP_") then
+                gui:Destroy()
+            end
+        end
+    end
+    
+    if _G.ESPInstance == self then
+        _G.ESPInstance = nil
+    end
+    
+    for k in pairs(self) do
+        self[k] = nil
+    end
+    setmetatable(self, nil)
+end
+
+_G.ESPInstance = ESP
+ESP:Start()
+
+return {
+    Toggle = function(state) ESP:Toggle(state) end,
+    UpdateSettings = function(settings) ESP:UpdateSettings(settings) end,
+    Stop = function() ESP:Stop() end,
+    Start = function() ESP:Start() end,
+    Destroy = function() ESP:Destroy() end,
+    Settings = ESP.Settings
+}
