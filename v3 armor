@@ -96,19 +96,32 @@ ESP.Settings = {
     ArmorBar = {  -- New Armor Bar Settings
         Enabled = true,
         Width = 2,
-        Offset = 3,  -- Space between armor bar and health bar
+        Offset = 3,  -- Space between armor bar and health bar - CHANGED TO 3
         Color = Color3.new(0, 0.5, 1),  -- Blue color for armor
         Background = Color3.new(0.2, 0.2, 0.3),
         BackgroundTransparency = 0,
         OutlineColor = Color3.new(0, 0, 0),
         OutlineTransparency = 0,
         MaxArmor = 130,  -- Maximum armor value
+        UseGradient = true,  -- NEW: Enable gradient for armor bar
+        
+        Gradient = {  -- NEW: Gradient settings for armor bar
+            Colors = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Color3.new(0.9, 0.9, 1)),  -- Very light bright blue
+                ColorSequenceKeypoint.new(0.3, Color3.new(0.7, 0.85, 1)),  -- Light blue
+                ColorSequenceKeypoint.new(0.6, Color3.new(0.4, 0.7, 1)),  -- Medium blue
+                ColorSequenceKeypoint.new(1, Color3.new(0, 0.3, 0.8))  -- Dark blue
+            }),
+            Rotation = 90,
+            LerpAnimation = true,
+            LerpSpeed = 0.028,
+        },
     },
     
     HealthText = {
         Enabled = true,
         Size = 10,
-        Offset = 35,
+        Offset = 21,
         Color = Color3.new(1, 1, 1),
         StaticColor = Color3.fromRGB(255, 255, 255),
         UseDynamicColor = true,
@@ -117,6 +130,7 @@ ESP.Settings = {
         OutlineColor = Color3.new(0, 0, 0),
         OutlineTransparency = 0,
         FollowBar = false,
+        FollowArmorBar = true,  -- NEW: Follow armor bar instead of health bar
     },
     
     NameTag = {
@@ -300,6 +314,23 @@ function ESP:CreateBox(player)
         armorFill.Parent = armorBg
         armorFill.ZIndex = armorBg.ZIndex + 1
         
+        -- Add gradient to armor bar
+        if self.Settings.ArmorBar.UseGradient then
+            local armorGradient = Instance.new("UIGradient")
+            armorGradient.Color = self.Settings.ArmorBar.Gradient.Colors
+            armorGradient.Rotation = self.Settings.ArmorBar.Gradient.Rotation
+            armorGradient.Parent = armorFill
+            box.ArmorGradient = armorGradient
+        end
+        
+        local armorMask = Instance.new("Frame")
+        armorMask.Name = "ArmorMask"
+        armorMask.BackgroundColor3 = Color3.new(0, 0, 0)
+        armorMask.BackgroundTransparency = 0.3
+        armorMask.BorderSizePixel = 0
+        armorMask.Parent = armorBg
+        armorMask.ZIndex = armorBg.ZIndex + 2
+        
         local armorBgStroke = Instance.new("UIStroke")
         armorBgStroke.Color = self.Settings.ArmorBar.OutlineColor
         armorBgStroke.Thickness = 1
@@ -308,6 +339,7 @@ function ESP:CreateBox(player)
         
         box.ArmorBg = armorBg
         box.ArmorFill = armorFill
+        box.ArmorMask = armorMask
     end
     
     if self.Settings.NameTag.Enabled then
@@ -732,7 +764,11 @@ function ESP:Update()
             end
             
             -- Smooth armor animation
-            box.VisualArmor = box.VisualArmor + (armorPercent - box.VisualArmor) * 0.1
+            if self.Settings.ArmorBar.Gradient.LerpAnimation then
+                box.VisualArmor = box.VisualArmor + (armorPercent - box.VisualArmor) * self.Settings.ArmorBar.Gradient.LerpSpeed
+            else
+                box.VisualArmor = box.VisualArmor + (armorPercent - box.VisualArmor) * 0.1
+            end
             
             -- Calculate positions for armor bar, health bar, and health text
             local totalBarWidth = 0
@@ -758,8 +794,14 @@ function ESP:Update()
                 box.ArmorFill.Position = UDim2.new(0, 0, 0, totalBoxHeight - armorFillHeight)
                 box.ArmorFill.Size = UDim2.new(1, 0, 0, armorFillHeight)
                 
+                -- Update armor mask
+                local armorMaskHeight = totalBoxHeight * (1 - box.VisualArmor)
+                box.ArmorMask.Size = UDim2.new(1, 0, 0, armorMaskHeight)
+                
                 -- Update armor color based on percent
-                box.ArmorFill.BackgroundColor3 = self:GetArmorColor(box.VisualArmor)
+                if not self.Settings.ArmorBar.UseGradient then
+                    box.ArmorFill.BackgroundColor3 = self:GetArmorColor(box.VisualArmor)
+                end
             end
             
             -- Position health bar (between armor bar and box)
@@ -814,20 +856,37 @@ function ESP:Update()
                 
                 -- Calculate health text position
                 local totalOffset = 0
-                if self.Settings.ArmorBar.Enabled then
-                    totalOffset = totalOffset + self.Settings.ArmorBar.Width + self.Settings.ArmorBar.Offset
-                end
-                if self.Settings.HealthBar.Enabled then
-                    totalOffset = totalOffset + self.Settings.HealthBar.Width + self.Settings.HealthBar.Offset
-                end
+                local healthTextX = 0
                 
-                if self.Settings.HealthText.FollowBar then
-                    local maskHeight = totalBoxHeight * (1 - box.VisualHealth)
-                    local healthTextY = boxTopY + maskHeight + 3 - (self.Settings.HealthText.Size / 2)
-                    box.HealthText.Position = UDim2.new(0, left - totalOffset, 0, healthTextY)
+                if self.Settings.ArmorBar.Enabled and self.Settings.HealthText.FollowArmorBar then
+                    -- Position health text next to armor bar (left side)
+                    healthTextX = armorBarX - self.Settings.HealthText.Offset
+                    -- For FollowBar mode, use armor bar position
+                    if self.Settings.HealthText.FollowBar then
+                        local maskHeight = totalBoxHeight * (1 - box.VisualHealth)
+                        local healthTextY = boxTopY + maskHeight + 3 - (self.Settings.HealthText.Size / 2)
+                        box.HealthText.Position = UDim2.new(0, healthTextX, 0, healthTextY)
+                    else
+                        local healthTextY = boxTopY + (totalBoxHeight * 0.001) - (self.Settings.HealthText.Size / 2)
+                        box.HealthText.Position = UDim2.new(0, healthTextX, 0, healthTextY)
+                    end
                 else
-                    local healthTextY = boxTopY + (totalBoxHeight * 0.001) - (self.Settings.HealthText.Size / 2)
-                    box.HealthText.Position = UDim2.new(0, left - totalOffset, 0, healthTextY)
+                    -- Position health text next to health bar (original behavior)
+                    if self.Settings.ArmorBar.Enabled then
+                        totalOffset = totalOffset + self.Settings.ArmorBar.Width + self.Settings.ArmorBar.Offset
+                    end
+                    if self.Settings.HealthBar.Enabled then
+                        totalOffset = totalOffset + self.Settings.HealthBar.Width + self.Settings.HealthBar.Offset
+                    end
+                    
+                    if self.Settings.HealthText.FollowBar then
+                        local maskHeight = totalBoxHeight * (1 - box.VisualHealth)
+                        local healthTextY = boxTopY + maskHeight + 3 - (self.Settings.HealthText.Size / 2)
+                        box.HealthText.Position = UDim2.new(0, left - totalOffset, 0, healthTextY)
+                    else
+                        local healthTextY = boxTopY + (totalBoxHeight * 0.001) - (self.Settings.HealthText.Size / 2)
+                        box.HealthText.Position = UDim2.new(0, left - totalOffset, 0, healthTextY)
+                    end
                 end
                 
                 box.HealthText.Size = UDim2.new(0, 18, 0, self.Settings.HealthText.Size + 4)
