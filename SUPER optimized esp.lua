@@ -168,8 +168,8 @@ local Settings = {
     
     Chams = {
         Enabled = true,
-        Fill = { Color = rgb(0, 255, 255), Transparency = 0.9 },
-        Outline = { Color = rgb(255, 0, 0), Transparency = 0.4 },
+        Fill = { Color = rgb(255, 255, 255), Transparency = 0.95 },
+        Outline = { Color = rgb(255, 255, 255), Transparency = 0.6 },
     },
     
     Box = {
@@ -184,17 +184,17 @@ local Settings = {
             Rotation = 90,
             Transparency = NumberSequence.new(0.9)
         },
-        Fill = false,
+        Fill = true,
         FillGradientEnabled = true,
         FillGradient = {
             ColorSequence = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, rgb(0, 255, 255)),
-                ColorSequenceKeypoint.new(1, rgb(0, 255, 255))
+                ColorSequenceKeypoint.new(0, rgb(255, 255, 255)),
+                ColorSequenceKeypoint.new(1, rgb(235, 130, 255))
             }),
-            Rotation = 0,
+            Rotation = 90,
             Transparency = NumberSequence.new({
-                NumberSequenceKeypoint.new(0, 0.1),
-                NumberSequenceKeypoint.new(1, 0.1)
+                NumberSequenceKeypoint.new(0, 0.9),
+                NumberSequenceKeypoint.new(1, 0.5)
             })
         },
     },
