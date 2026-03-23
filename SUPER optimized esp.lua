@@ -210,9 +210,9 @@ local Settings = {
         GradientEnabled = true,
         Gradient = {
             ColorSequence = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, rgb(255, 0, 0)),
-                ColorSequenceKeypoint.new(0.5, rgb(255, 255, 0)),
-                ColorSequenceKeypoint.new(1, rgb(0, 255, 0))
+                ColorSequenceKeypoint.new(0, rgb(255, 255, 255)),
+                ColorSequenceKeypoint.new(0.5, rgb(246, 199, 255)),
+                ColorSequenceKeypoint.new(1, rgb(235, 130, 255))
             }),
             Rotation = 90,
         }
