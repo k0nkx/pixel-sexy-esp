@@ -2,7 +2,7 @@
 local ESPLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/k0nkx/pixel-sexy-esp/refs/heads/main/Optimized%20esp%20module.lua"))()
 
 -- ur ui lib here
-local Aero =loadstring(game:HttpGet(" UH IDK "))()
+local uilib =loadstring(game:HttpGet(" UH IDK "))()
 
 -- put the settings table here I'm to lazy
 local settings = { ... } -- Same settings table
