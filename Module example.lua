@@ -1,4 +1,4 @@
-local ESPLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/k0nkx/pixel-sexy-esp/refs/heads/main/SUPER%20optimized%20esp.lua?token=GHSAT0AAAAAADRVYZIKDSQFFCJIQC5O3GL42OCANLQ"))()
+local ESPLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/k0nkx/pixel-sexy-esp/refs/heads/main/Optimized%20esp%20module.lua"))()
 
 -- Or if you want to embed the library directly in the script:
 --[[
@@ -148,4 +148,3 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         print("ESP Unloaded")
     end
 end)
-
