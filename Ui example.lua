@@ -1,5 +1,5 @@
 -- Load ESP Library
-local ESPLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/yourusername/ESPLib/main/ESPLib.lua"))()
+local ESPLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/k0nkx/pixel-sexy-esp/refs/heads/main/Optimized%20esp%20module.lua?token=GHSAT0AAAAAADRVYZILGEHOIJ2B5YHDHW2A2OCAR6A"))()
 
 -- ur ui lib here
 local Aero =loadstring(game:HttpGet(" UH IDK "))()
