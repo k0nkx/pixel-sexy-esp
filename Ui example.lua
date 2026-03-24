@@ -1,76 +1,186 @@
--- Load ESP Library
-local ESPLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/k0nkx/pixel-sexy-esp/refs/heads/main/Optimized%20esp%20module.lua"))()
+-- Load your UI library (example using a common structure)
+local Library = loadstring(game:HttpGet("https://example.com/ui-library.lua"))()
+local Window = Library:CreateWindow("Example")
+local ESPLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/k0nkx/pixel-sexy-esp/refs/heads/main/Optimized%20esp%20module.lua"))()
 
--- ur ui lib here
-local uilib =loadstring(game:HttpGet(" UH IDK "))()
+-- Create ESP instance
+local esp = ESPLibrary.new({
+    Box = {
+        Enabled = true,
+        Type = "Box",
+        GradientEnabled = true,
+    },
+    Healthbar = {
+        Enabled = true,
+        Position = "Left",
+        Thickness = 3,
+    },
+    NameText = {
+        Enabled = true,
+        Position = "Top",
+        Size = 12,
+        UseCustomFont = true,
+        CustomFontName = "Tahoma",
+    },
+    DistanceText = {
+        Enabled = true,
+        Position = "Bottom",
+        Size = 11,
+    },
+})
 
--- put the settings table here I'm to lazy
-local settings = { ... } -- Same settings table
+-- Start ESP automatically
+esp:Start()
 
--- Initialize ESP
-ESPLib.Initialize(settings)
+-- Create UI Toggles and Controls
+local VisualsTab = Window:CreateTab("Visuals")
+local ESPTab = VisualsTab:CreateSection("ESP Settings")
 
--- Create Aero Window
-local window = Aero:CreateWindow("ESP Settings", Enum.KeyCode.RightShift)
-
--- Create categories
-local main = window:CreateCategory("Main")
-local visual = window:CreateCategory("Visuals")
-local text = window:CreateCategory("Text")
-local colors = window:CreateCategory("Colors")
-
--- Add elements
-main:CreateToggle("Enable ESP", settings.Main.Enabled, function(Value)
-    settings.Main.Enabled = Value
-    ESPLib.UpdateSettings(settings)
+-- Main ESP Toggle
+local espToggle = ESPTab:CreateToggle("ESP Enabled", true, function(value)
+    esp:SetEnabled(value)
 end)
 
-main:CreateSlider("Render Distance", settings.Main.RenderDistance, 500, 20000, function(Value)
-    settings.Main.RenderDistance = Value
-    ESPLib.UpdateSettings(settings)
+-- Box Settings
+local BoxSection = ESPTab:CreateSection("Box")
+local boxToggle = BoxSection:CreateToggle("Box ESP", true, function(value)
+    esp:UpdateSettings({
+        Box = { Enabled = value }
+    })
 end)
 
-visual:CreateToggle("Box ESP", settings.Box.Enabled, function(Value)
-    settings.Box.Enabled = Value
-    ESPLib.UpdateSettings(settings)
+local boxTypeDropdown = BoxSection:CreateDropdown("Box Type", {"Box", "Corner"}, function(value)
+    esp:UpdateSettings({
+        Box = { Type = value }
+    })
 end)
 
-visual:CreateDropdown("Box Type", {"Box", "Corner"}, settings.Box.Type, function(Value)
-    settings.Box.Type = Value
-    ESPLib.UpdateSettings(settings)
+local boxGradientToggle = BoxSection:CreateToggle("Box Gradient", true, function(value)
+    esp:UpdateSettings({
+        Box = { GradientEnabled = value }
+    })
 end)
 
-visual:CreateToggle("Healthbar", settings.Healthbar.Enabled, function(Value)
-    settings.Healthbar.Enabled = Value
-    ESPLib.UpdateSettings(settings)
+local boxFillToggle = BoxSection:CreateToggle("Fill Box", true, function(value)
+    esp:UpdateSettings({
+        Box = { Fill = value }
+    })
 end)
 
-visual:CreateDropdown("Healthbar Position", {"Left", "Right", "Top", "Bottom"}, settings.Healthbar.Position, function(Value)
-    settings.Healthbar.Position = Value
-    ESPLib.UpdateSettings(settings)
+-- Healthbar Settings
+local HealthSection = ESPTab:CreateSection("Healthbar")
+local healthToggle = HealthSection:CreateToggle("Healthbar", true, function(value)
+    esp:UpdateSettings({
+        Healthbar = { Enabled = value }
+    })
 end)
 
-text:CreateToggle("Name Tags", settings.NameText.Enabled, function(Value)
-    settings.NameText.Enabled = Value
-    ESPLib.UpdateSettings(settings)
+local healthPosition = HealthSection:CreateDropdown("Position", {"Left", "Right", "Top", "Bottom"}, function(value)
+    esp:UpdateSettings({
+        Healthbar = { Position = value }
+    })
 end)
 
-text:CreateSlider("Name Text Size", settings.NameText.Size, 8, 24, function(Value)
-    settings.NameText.Size = Value
-    ESPLib.UpdateSettings(settings)
+local healthThickness = HealthSection:CreateSlider("Thickness", 1, 10, 3, function(value)
+    esp:UpdateSettings({
+        Healthbar = { Thickness = value }
+    })
 end)
 
-text:CreateToggle("Distance Text", settings.DistanceText.Enabled, function(Value)
-    settings.DistanceText.Enabled = Value
-    ESPLib.UpdateSettings(settings)
+local healthTweenToggle = HealthSection:CreateToggle("Smooth Animation", true, function(value)
+    esp:UpdateSettings({
+        Healthbar = { Tween = value }
+    })
 end)
 
-colors:CreateToggle("Chams", settings.Chams.Enabled, function(Value)
-    settings.Chams.Enabled = Value
-    ESPLib.UpdateSettings(settings)
+-- Name Text Settings
+local NameSection = ESPTab:CreateSection("Name Text")
+local nameToggle = NameSection:CreateToggle("Show Name", true, function(value)
+    esp:UpdateSettings({
+        NameText = { Enabled = value }
+    })
 end)
 
-colors:CreateColorPicker("Chams Color", settings.Chams.Fill.Color, function(Value)
-    settings.Chams.Fill.Color = Value
-    ESPLib.UpdateSettings(settings)
+local namePosition = NameSection:CreateDropdown("Position", {"Top", "Bottom", "Left", "Right"}, function(value)
+    esp:UpdateSettings({
+        NameText = { Position = value }
+    })
+end)
+
+local nameSize = NameSection:CreateSlider("Text Size", 8, 24, 12, function(value)
+    esp:UpdateSettings({
+        NameText = { Size = value }
+    })
+end)
+
+local fontDropdown = NameSection:CreateDropdown("Font", {
+    "Tahoma", "Gotham", "Ubuntu", "Montserrat", "Inter", 
+    "Poppins", "Roboto", "OpenSans", "Kanit", "JetBrainsMono"
+}, function(value)
+    esp:UpdateSettings({
+        NameText = { 
+            UseCustomFont = true,
+            CustomFontName = value 
+        }
+    })
+end)
+
+-- Distance Text Settings
+local DistanceSection = ESPTab:CreateSection("Distance Text")
+local distanceToggle = DistanceSection:CreateToggle("Show Distance", true, function(value)
+    esp:UpdateSettings({
+        DistanceText = { Enabled = value }
+    })
+end)
+
+local distancePosition = DistanceSection:CreateDropdown("Position", {"Top", "Bottom", "Left", "Right"}, function(value)
+    esp:UpdateSettings({
+        DistanceText = { Position = value }
+    })
+end)
+
+local distanceSize = DistanceSection:CreateSlider("Text Size", 8, 24, 11, function(value)
+    esp:UpdateSettings({
+        DistanceText = { Size = value }
+    })
+end)
+
+-- Chams Settings
+local ChamsSection = ESPTab:CreateSection("Chams")
+local chamsToggle = ChamsSection:CreateToggle("Chams", false, function(value)
+    esp:UpdateSettings({
+        Chams = { Enabled = value }
+    })
+end)
+
+-- Render Distance
+local RenderSection = ESPTab:CreateSection("Performance")
+local renderDistance = RenderSection:CreateSlider("Render Distance", 50, 10000, 10000, function(value)
+    esp:UpdateSettings({
+        Main = { RenderDistance = value }
+    })
+end)
+
+-- Color Pickers (if UI library supports)
+local ColorSection = ESPTab:CreateSection("Colors")
+local boxColor = ColorSection:CreateColorPicker("Box Color", Color3.fromRGB(255, 255, 255), function(color)
+    -- Update box gradient colors
+    esp:UpdateSettings({
+        Box = {
+            Gradient = {
+                ColorSequence = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, color),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 130, 255))
+                })
+            }
+        }
+    })
+end)
+
+-- Unload button
+local UnloadSection = VisualsTab:CreateSection("Unload")
+local unloadButton = UnloadSection:CreateButton("Unload ESP", function()
+    esp:Stop()
+    -- Also unload your UI if needed
+    Library:Unload()
 end)
