@@ -3,42 +3,12 @@ if getgenv().UnloadESP then
     wait(0.1)
 end
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
-local TweenService = game:GetService("TweenService")
-local CoreGui = game:GetService("CoreGui")
-local UserSettings = game:GetService("UserSettings")
-local HttpService = game:GetService("HttpService")
-
-local function protectGUI(gui)
-    if not gui then return end
-    
-    local originalParent = gui.Parent
-    local originalName = gui.Name
-    
-    local parentConnection
-    parentConnection = gui:GetPropertyChangedSignal("Parent"):Connect(function()
-        if gui.Parent ~= originalParent and gui.Parent ~= CoreGui then
-            gui.Parent = originalParent
-        end
-        if gui.Parent == nil then
-            gui.Parent = originalParent
-        end
-    end)
-    
-    local removeConnection
-    removeConnection = gui.AncestryChanged:Connect(function()
-        if gui.Parent == nil then
-            gui.Parent = originalParent
-        end
-        if gui:IsDescendantOf(game.Players.LocalPlayer) or gui:IsDescendantOf(workspace) then
-            gui.Parent = originalParent
-        end
-    end)
-    
-    return {parentConnection, removeConnection}
-end
+local Players = cloneref(game:GetService("Players"))
+local RunService = cloneref(game:GetService("RunService"))
+local Camera = cloneref(workspace.CurrentCamera)
+local TweenService = cloneref(game:GetService("TweenService"))
+local CoreGui = cloneref(game:GetService("CoreGui"))
+local HttpService = cloneref(game:GetService("HttpService"))
 
 local function rgb(r, g, b)
     return Color3.fromRGB(r, g, b)
@@ -64,101 +34,36 @@ local function rect(min, max)
     return Rect.new(min, max)
 end
 
-local function getSafeUI()
-    local success, result = pcall(function()
-        return gethui()
-    end)
-    if success and result then
-        return result
-    end
-    return CoreGui
-end
-
-local gethui_safe = getSafeUI()
-
-local Fonts = {
-    Roboto = nil,
-    Arial = nil,
-    Tahoma = nil,
-    Gotham = nil,
-    Ubuntu = nil,
-    Montserrat = nil,
-    Custom = nil
-}
-
 local CustomFonts = {
-    -- Original Fonts
     Tahoma = { url = "https://github.com/k0nkx/UI-Lib-Tuff/raw/refs/heads/main/Windows-XP-Tahoma.ttf" },
     Gotham = { url = "https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/Gotham/Regular/Gotham-Regular.ttf" },
     Ubuntu = { url = "https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/Ubuntu/Regular/Ubuntu-Regular.ttf" },
     Montserrat = { url = "https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/Montserrat/Regular/Montserrat-Regular.ttf" },
-
-    -- Geometric & Modern Sans
     Inter = { url = "https://github.com/rsms/inter/raw/master/docs/font-files/Inter-Regular.otf" },
     Poppins = { url = "https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-Regular.ttf" },
     Roboto = { url = "https://github.com/google/fonts/raw/main/apache/roboto/static/Roboto-Regular.ttf" },
     OpenSans = { url = "https://github.com/google/fonts/raw/main/ofl/opensans/OpenSans%5Bwdth,wght%5D.ttf" },
     Kanit = { url = "https://github.com/google/fonts/raw/main/ofl/kanit/Kanit-Regular.ttf" },
-
-    -- Monospace (Great for Coding/Console UIs)
     JetBrainsMono = { url = "https://github.com/JetBrains/JetBrainsMono/raw/master/fonts/ttf/JetBrainsMono-Regular.ttf" },
     FiraCode = { url = "https://github.com/tonsky/FiraCode/raw/master/distr/ttf/FiraCode-Regular.ttf" },
     Inconsolata = { url = "https://github.com/google/fonts/raw/main/ofl/inconsolata/static/Inconsolata-Regular.ttf" },
     SpaceMono = { url = "https://github.com/google/fonts/raw/main/ofl/spacemono/SpaceMono-Regular.ttf" },
     Hack = { url = "https://github.com/source-foundry/Hack/raw/master/build/ttf/Hack-Regular.ttf" },
-
-    -- Display & Bold Stylized
     BebasNeue = { url = "https://github.com/google/fonts/raw/main/ofl/bebasneue/BebasNeue-Regular.ttf" },
     Oswald = { url = "https://github.com/google/fonts/raw/main/ofl/oswald/static/Oswald-Regular.ttf" },
     ArchivoBlack = { url = "https://github.com/google/fonts/raw/main/ofl/archivoblack/ArchivoBlack-Regular.ttf" },
     Syne = { url = "https://github.com/google/fonts/raw/main/ofl/syne/Syne%5Bwght%5D.ttf" },
     Outfit = { url = "https://github.com/google/fonts/raw/main/ofl/outfit/static/Outfit-Regular.ttf" },
-
-    -- Serif & Classic
     PlayfairDisplay = { url = "https://github.com/google/fonts/raw/main/ofl/playfairdisplay/static/PlayfairDisplay-Regular.ttf" },
     Lora = { url = "https://github.com/google/fonts/raw/main/ofl/lora/static/Lora-Regular.ttf" },
     Merriweather = { url = "https://github.com/google/fonts/raw/main/ofl/merriweather/static/Merriweather-Regular.ttf" },
     PTSerif = { url = "https://github.com/google/fonts/raw/main/ofl/ptserif/PTSerif-Regular.ttf" },
     LibreBaskerville = { url = "https://github.com/google/fonts/raw/main/ofl/librebaskerville/LibreBaskerville-Regular.ttf" },
-
-    -- Retro & Niche
     PressStart2P = { url = "https://github.com/google/fonts/raw/main/ofl/pressstart2p/PressStart2P-Regular.ttf" },
     Silkscreen = { url = "https://github.com/google/fonts/raw/main/ofl/silkscreen/Silkscreen-Regular.ttf" },
     PixelifySans = { url = "https://github.com/google/fonts/raw/main/ofl/pixelifysans/PixelifySans%5Bwght%5D.ttf" },
     Lexend = { url = "https://github.com/google/fonts/raw/main/ofl/lexend/static/Lexend-Regular.ttf" }
 }
-
-local function LoadCustomFont(fontName)
-    local fontData = CustomFonts[fontName]
-    if not fontData then return nil end
-    
-    local fileName = fontName .. ".ttf"
-    local fontFileName = fontName .. ".font"
-    
-    if not isfile(fileName) then
-        local success, result = pcall(function()
-            return game:HttpGet(fontData.url)
-        end)
-        if success and result then
-            writefile(fileName, result)
-        else
-            return nil
-        end
-    end
-    
-    local fontConfig = {
-        name = fontName,
-        faces = {{
-            name = "Regular",
-            weight = 400,
-            style = "normal",
-            assetId = getcustomasset(fileName)
-        }}
-    }
-    
-    writefile(fontFileName, HttpService:JSONEncode(fontConfig))
-    return Font.new(getcustomasset(fontFileName), Enum.FontWeight.Regular)
-end
 
 local Settings = {
     Main = {
@@ -223,6 +128,7 @@ local Settings = {
         Color = { Color = rgb(255, 255, 255) },
         Position = "Top",
         Size = 12,
+        Font = Enum.Font.SourceSans,
         UseCustomFont = true,
         CustomFontName = "Tahoma",
     },
@@ -232,6 +138,7 @@ local Settings = {
         Color = { Color = rgb(255, 255, 255) },
         Position = "Bottom",
         Size = 12,
+        Font = Enum.Font.SourceSans,
         UseCustomFont = true,
         CustomFontName = "Tahoma",
     },
@@ -247,25 +154,12 @@ local Cache = Instance.new("ScreenGui")
 Cache.Name = "EspCache"
 Cache.Enabled = false
 Cache.ResetOnSpawn = false
-Cache.Parent = gethui_safe
-
-local guiProtections = {}
-table.insert(guiProtections, protectGUI(ScreenGui))
-table.insert(guiProtections, protectGUI(Cache))
+Cache.Parent = CoreGui
 
 local EspPlayers = {}
 local EspConnections = {}
 local LoopConnection = nil
 local LoadedCustomFonts = {}
-
-local function enforceGUIParent()
-    if ScreenGui and ScreenGui.Parent ~= CoreGui then
-        ScreenGui.Parent = CoreGui
-    end
-    if Cache and Cache.Parent ~= gethui_safe and Cache.Parent ~= CoreGui then
-        Cache.Parent = gethui_safe
-    end
-end
 
 local function Create(instance, options)
     local Ins = Instance.new(instance)
@@ -275,19 +169,78 @@ local function Create(instance, options)
     return Ins
 end
 
-local function GetFontForText(settings)
+local function LoadCustomFont(fontName)
+    local fontData = CustomFonts[fontName]
+    if not fontData then return nil end
+    
+    local fileName = fontName .. ".ttf"
+    local fontFileName = fontName .. ".font"
+    
+    local success, result = pcall(function()
+        if not isfile(fileName) then
+            return game:HttpGet(fontData.url)
+        end
+        return nil
+    end)
+    
+    if success and result then
+        local writeSuccess = pcall(function()
+            writefile(fileName, result)
+        end)
+        if not writeSuccess then
+            return nil
+        end
+    elseif not isfile(fileName) then
+        return nil
+    end
+    
+    local fontConfig = {
+        name = fontName,
+        faces = {{
+            name = "Regular",
+            weight = 400,
+            style = "normal",
+            assetId = getcustomasset(fileName)
+        }}
+    }
+    
+    local jsonSuccess = pcall(function()
+        writefile(fontFileName, HttpService:JSONEncode(fontConfig))
+    end)
+    
+    if not jsonSuccess then
+        return nil
+    end
+    
+    local fontSuccess, font = pcall(function()
+        return Font.new(getcustomasset(fontFileName), Enum.FontWeight.Regular)
+    end)
+    
+    if fontSuccess then
+        return font
+    end
+    return nil
+end
+
+local function ApplyFontToText(textLabel, settings)
     if settings.UseCustomFont then
         if not LoadedCustomFonts[settings.CustomFontName] then
             local font = LoadCustomFont(settings.CustomFontName)
             if font then
                 LoadedCustomFonts[settings.CustomFontName] = font
+                textLabel.FontFace = font
+                return true
             else
-                return Font.new("rbxasset://fonts/families/Arial.json")
+                textLabel.Font = settings.Font
+                return false
             end
+        else
+            textLabel.FontFace = LoadedCustomFonts[settings.CustomFontName]
+            return true
         end
-        return LoadedCustomFonts[settings.CustomFontName]
     else
-        return Font.new("rbxasset://fonts/families/Arial.json")
+        textLabel.Font = settings.Font
+        return true
     end
 end
 
@@ -330,185 +283,61 @@ local function BoxSolve(rootPart)
     return BoxSize, BoxPosition, TopIsRendered, Distance
 end
 
-local function CreateObject(player)
-    local Data = {
-        Items = {},
-        Info = {}
-    }
-    
-    local Items = Data.Items
-    
-    Items.Holder = Create("Frame", {
-        Parent = ScreenGui,
-        Visible = false,
+local function CreateBoxElements(Items, player)
+    Items.Box = Create("Frame", {
+        Parent = Cache,
         Name = "",
         BackgroundTransparency = 1,
-        Position = dim2(0.433, 0, 0.326, 0),
+        Position = dim2(0, 1, 0, 1),
         BorderColor3 = rgb(0, 0, 0),
-        Size = dim2(0, 211, 0, 240),
+        Size = dim2(1, -2, 1, -2),
         BorderSizePixel = 0,
         BackgroundColor3 = rgb(255, 255, 255)
     })
     
-    Items.HolderGradient = Create("UIGradient", {
-        Rotation = 0,
-        Name = "",
-        Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, rgb(255, 255, 255)),
-            ColorSequenceKeypoint.new(1, rgb(255, 255, 255))
-        }),
-        Parent = Items.Holder,
-        Enabled = true
+    Create("UIStroke", {
+        Parent = Items.Box,
+        LineJoinMode = Enum.LineJoinMode.Miter
     })
     
-    Items.Left = Create("Frame", {
-        Parent = Items.Holder,
-        Size = dim2(0, 0, 1, 0),
+    Items.Inner = Create("Frame", {
+        Parent = Items.Box,
         Name = "",
         BackgroundTransparency = 1,
-        Position = dim2(0, -1, 0, 0),
+        Position = dim2(0, 1, 0, 1),
         BorderColor3 = rgb(0, 0, 0),
-        ZIndex = 2,
+        Size = dim2(1, -2, 1, -2),
         BorderSizePixel = 0,
         BackgroundColor3 = rgb(255, 255, 255)
     })
     
-    Create("UIListLayout", {
-        FillDirection = Enum.FillDirection.Horizontal,
-        HorizontalAlignment = Enum.HorizontalAlignment.Right,
-        VerticalFlex = Enum.UIFlexAlignment.Fill,
-        Parent = Items.Left,
-        Padding = dim(0, 1),
-        SortOrder = Enum.SortOrder.LayoutOrder
+    Items.UIStroke = Create("UIStroke", {
+        Color = rgb(255, 255, 255),
+        LineJoinMode = Enum.LineJoinMode.Miter,
+        Parent = Items.Inner
     })
     
-    Items.LeftTexts = Create("Frame", {
-        LayoutOrder = -100,
-        Parent = Items.Left,
-        BackgroundTransparency = 1,
-        Name = "",
-        BorderColor3 = rgb(0, 0, 0),
-        BorderSizePixel = 0,
-        AutomaticSize = Enum.AutomaticSize.X,
-        BackgroundColor3 = rgb(255, 255, 255)
+    Items.BoxGradient = Create("UIGradient", {
+        Parent = Items.UIStroke,
+        Color = Settings.Box.Gradient.ColorSequence,
+        Enabled = Settings.Box.GradientEnabled,
+        Rotation = Settings.Box.Gradient.Rotation
     })
     
-    Create("UIListLayout", {
-        Parent = Items.LeftTexts,
-        Padding = dim(0, 1),
-        SortOrder = Enum.SortOrder.LayoutOrder
-    })
-    
-    Items.Bottom = Create("Frame", {
-        Parent = Items.Holder,
-        Size = dim2(1, 0, 0, 0),
+    Items.Inner2 = Create("Frame", {
+        Parent = Items.Inner,
         Name = "",
         BackgroundTransparency = 1,
-        Position = dim2(0, 0, 1, 1),
+        Position = dim2(0, 1, 0, 1),
         BorderColor3 = rgb(0, 0, 0),
-        ZIndex = 2,
+        Size = dim2(1, -2, 1, -2),
         BorderSizePixel = 0,
         BackgroundColor3 = rgb(255, 255, 255)
     })
     
-    Create("UIListLayout", {
-        SortOrder = Enum.SortOrder.LayoutOrder,
-        HorizontalAlignment = Enum.HorizontalAlignment.Center,
-        HorizontalFlex = Enum.UIFlexAlignment.Fill,
-        Parent = Items.Bottom,
-        Padding = dim(0, 1)
-    })
-    
-    Items.BottomTexts = Create("Frame", {
-        LayoutOrder = 1,
-        Parent = Items.Bottom,
-        BackgroundTransparency = 1,
-        Name = "",
-        BorderColor3 = rgb(0, 0, 0),
-        BorderSizePixel = 0,
-        AutomaticSize = Enum.AutomaticSize.XY,
-        BackgroundColor3 = rgb(255, 255, 255)
-    })
-    
-    Create("UIListLayout", {
-        Parent = Items.BottomTexts,
-        Padding = dim(0, 1),
-        SortOrder = Enum.SortOrder.LayoutOrder
-    })
-    
-    Items.Top = Create("Frame", {
-        Parent = Items.Holder,
-        Size = dim2(1, 0, 0, 0),
-        Name = "",
-        BackgroundTransparency = 1,
-        Position = dim2(0, 0, 0, -1),
-        BorderColor3 = rgb(0, 0, 0),
-        ZIndex = 2,
-        BorderSizePixel = 0,
-        BackgroundColor3 = rgb(255, 255, 255)
-    })
-    
-    Create("UIListLayout", {
-        VerticalAlignment = Enum.VerticalAlignment.Bottom,
-        SortOrder = Enum.SortOrder.LayoutOrder,
-        HorizontalAlignment = Enum.HorizontalAlignment.Center,
-        HorizontalFlex = Enum.UIFlexAlignment.Fill,
-        Parent = Items.Top,
-        Padding = dim(0, 1)
-    })
-    
-    Items.TopTexts = Create("Frame", {
-        LayoutOrder = -100,
-        Parent = Items.Top,
-        BackgroundTransparency = 1,
-        Name = "",
-        BorderColor3 = rgb(0, 0, 0),
-        BorderSizePixel = 0,
-        AutomaticSize = Enum.AutomaticSize.XY,
-        BackgroundColor3 = rgb(255, 255, 255)
-    })
-    
-    Create("UIListLayout", {
-        Parent = Items.TopTexts,
-        Padding = dim(0, 1),
-        SortOrder = Enum.SortOrder.LayoutOrder
-    })
-    
-    Items.Right = Create("Frame", {
-        Parent = Items.Holder,
-        Size = dim2(0, 0, 1, 0),
-        Name = "",
-        BackgroundTransparency = 1,
-        Position = dim2(1, 1, 0, 0),
-        BorderColor3 = rgb(0, 0, 0),
-        ZIndex = 2,
-        BorderSizePixel = 0,
-        BackgroundColor3 = rgb(255, 255, 255)
-    })
-    
-    Create("UIListLayout", {
-        FillDirection = Enum.FillDirection.Horizontal,
-        VerticalFlex = Enum.UIFlexAlignment.Fill,
-        Parent = Items.Right,
-        Padding = dim(0, 1),
-        SortOrder = Enum.SortOrder.LayoutOrder
-    })
-    
-    Items.RightTexts = Create("Frame", {
-        LayoutOrder = 100,
-        Parent = Items.Right,
-        BackgroundTransparency = 1,
-        Name = "",
-        BorderColor3 = rgb(0, 0, 0),
-        BorderSizePixel = 0,
-        AutomaticSize = Enum.AutomaticSize.X,
-        BackgroundColor3 = rgb(255, 255, 255)
-    })
-    
-    Create("UIListLayout", {
-        Parent = Items.RightTexts,
-        Padding = dim(0, 1),
-        SortOrder = Enum.SortOrder.LayoutOrder
+    Create("UIStroke", {
+        Parent = Items.Inner2,
+        LineJoinMode = Enum.LineJoinMode.Miter
     })
     
     Items.Corners = Create("Frame", {
@@ -662,62 +491,25 @@ local function CreateObject(player)
     
     Create("UIGradient", { Parent = Items.TopLeftX })
     
-    Items.Box = Create("Frame", {
-        Parent = Cache,
-        Name = "",
-        BackgroundTransparency = 1,
-        Position = dim2(0, 1, 0, 1),
-        BorderColor3 = rgb(0, 0, 0),
-        Size = dim2(1, -2, 1, -2),
-        BorderSizePixel = 0,
-        BackgroundColor3 = rgb(255, 255, 255)
-    })
+    if Settings.Box.Type == "Corner" then
+        Items.Corners.Parent = Items.Holder
+        Items.Box.Parent = Cache
+    else
+        Items.Box.Parent = Items.Holder
+        Items.Corners.Parent = Cache
+    end
     
-    Create("UIStroke", {
-        Parent = Items.Box,
-        LineJoinMode = Enum.LineJoinMode.Miter
-    })
-    
-    Items.Inner = Create("Frame", {
-        Parent = Items.Box,
-        Name = "",
-        BackgroundTransparency = 1,
-        Position = dim2(0, 1, 0, 1),
-        BorderColor3 = rgb(0, 0, 0),
-        Size = dim2(1, -2, 1, -2),
-        BorderSizePixel = 0,
-        BackgroundColor3 = rgb(255, 255, 255)
-    })
-    
-    Items.UIStroke = Create("UIStroke", {
-        Color = rgb(255, 255, 255),
-        LineJoinMode = Enum.LineJoinMode.Miter,
-        Parent = Items.Inner
-    })
-    
-    Items.BoxGradient = Create("UIGradient", {
-        Parent = Items.UIStroke,
-        Color = Settings.Box.Gradient.ColorSequence,
-        Enabled = Settings.Box.GradientEnabled,
-        Rotation = Settings.Box.Gradient.Rotation
-    })
-    
-    Items.Inner2 = Create("Frame", {
-        Parent = Items.Inner,
-        Name = "",
-        BackgroundTransparency = 1,
-        Position = dim2(0, 1, 0, 1),
-        BorderColor3 = rgb(0, 0, 0),
-        Size = dim2(1, -2, 1, -2),
-        BorderSizePixel = 0,
-        BackgroundColor3 = rgb(255, 255, 255)
-    })
-    
-    Create("UIStroke", {
-        Parent = Items.Inner2,
-        LineJoinMode = Enum.LineJoinMode.Miter
-    })
-    
+    if Settings.Box.Fill then
+        Items.Holder.BackgroundTransparency = 0
+        if Settings.Box.FillGradientEnabled then
+            Items.HolderGradient.Color = Settings.Box.FillGradient.ColorSequence
+            Items.HolderGradient.Transparency = Settings.Box.FillGradient.Transparency
+            Items.HolderGradient.Rotation = Settings.Box.FillGradient.Rotation
+        end
+    end
+end
+
+local function CreateHealthbarElements(Items)
     Items.Healthbar = Create("Frame", {
         Name = Settings.Healthbar.Position,
         Parent = Cache,
@@ -754,11 +546,12 @@ local function CreateObject(player)
         Color = Settings.Healthbar.Gradient.ColorSequence
     })
     
-    local nameFont = GetFontForText(Settings.NameText)
-    local distanceFont = GetFontForText(Settings.DistanceText)
-    
+    Items.Healthbar.Parent = Items[Settings.Healthbar.Position]
+    Items.Healthbar.Visible = true
+end
+
+local function CreateNameTextElements(Items, player)
     Items.Text = Create("TextLabel", {
-        FontFace = nameFont,
         TextColor3 = Settings.NameText.Color.Color,
         BorderColor3 = rgb(0, 0, 0),
         Parent = Cache,
@@ -772,13 +565,25 @@ local function CreateObject(player)
         BackgroundColor3 = rgb(255, 255, 255)
     })
     
+    ApplyFontToText(Items.Text, Settings.NameText)
+    
     Create("UIStroke", {
         Parent = Items.Text,
         LineJoinMode = Enum.LineJoinMode.Miter
     })
     
+    Items.Text.Parent = Items[Settings.NameText.Position .. "Texts"]
+    if Settings.NameText.Position == "Top" or Settings.NameText.Position == "Bottom" then
+        Items.Text.AutomaticSize = Enum.AutomaticSize.Y
+        Items.Text.TextXAlignment = Enum.TextXAlignment.Center
+    else
+        Items.Text.AutomaticSize = Enum.AutomaticSize.XY
+        Items.Text.TextXAlignment = Settings.NameText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
+    end
+end
+
+local function CreateDistanceTextElements(Items)
     Items.Distance = Create("TextLabel", {
-        FontFace = distanceFont,
         TextColor3 = Settings.DistanceText.Color.Color,
         BorderColor3 = rgb(0, 0, 0),
         Parent = Cache,
@@ -791,32 +596,239 @@ local function CreateObject(player)
         BackgroundColor3 = rgb(255, 255, 255)
     })
     
+    ApplyFontToText(Items.Distance, Settings.DistanceText)
+    
     Create("UIStroke", {
         Parent = Items.Distance,
         LineJoinMode = Enum.LineJoinMode.Miter
     })
     
-    Data.RefreshChams = function()
-        local Character = Data.Info.Character
-        if not Data.Highlight then
-            Data.Highlight = Create("Highlight", {
-                FillColor = Settings.Chams.Fill.Color,
-                Enabled = Settings.Chams.Enabled,
-                OutlineTransparency = Settings.Chams.Outline.Transparency,
-                Adornee = Character,
-                FillTransparency = Settings.Chams.Fill.Transparency,
-                OutlineColor = Settings.Chams.Outline.Color,
-                Parent = CoreGui
-            })
-        else
-            Data.Highlight.Adornee = Character
-        end
+    Items.Distance.Parent = Items[Settings.DistanceText.Position .. "Texts"]
+    if Settings.DistanceText.Position == "Top" or Settings.DistanceText.Position == "Bottom" then
+        Items.Distance.AutomaticSize = Enum.AutomaticSize.Y
+        Items.Distance.TextXAlignment = Enum.TextXAlignment.Center
+    else
+        Items.Distance.AutomaticSize = Enum.AutomaticSize.XY
+        Items.Distance.TextXAlignment = Settings.DistanceText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
+    end
+end
+
+local function CreateChamsElements(Data)
+    Data.Highlight = Create("Highlight", {
+        FillColor = Settings.Chams.Fill.Color,
+        Enabled = Settings.Chams.Enabled,
+        OutlineTransparency = Settings.Chams.Outline.Transparency,
+        Adornee = Data.Info.Character,
+        FillTransparency = Settings.Chams.Fill.Transparency,
+        OutlineColor = Settings.Chams.Outline.Color,
+        Parent = CoreGui
+    })
+end
+
+local function CreateObject(player)
+    local Data = {
+        Items = {},
+        Info = {}
+    }
+    
+    local Items = Data.Items
+    
+    Items.Holder = Create("Frame", {
+        Parent = ScreenGui,
+        Visible = false,
+        Name = "",
+        BackgroundTransparency = 1,
+        Position = dim2(0.433, 0, 0.326, 0),
+        BorderColor3 = rgb(0, 0, 0),
+        Size = dim2(0, 211, 0, 240),
+        BorderSizePixel = 0,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Items.HolderGradient = Create("UIGradient", {
+        Rotation = 0,
+        Name = "",
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, rgb(255, 255, 255)),
+            ColorSequenceKeypoint.new(1, rgb(255, 255, 255))
+        }),
+        Parent = Items.Holder,
+        Enabled = true
+    })
+    
+    -- Create container frames (always needed for text positioning)
+    Items.Left = Create("Frame", {
+        Parent = Items.Holder,
+        Size = dim2(0, 0, 1, 0),
+        Name = "",
+        BackgroundTransparency = 1,
+        Position = dim2(0, -1, 0, 0),
+        BorderColor3 = rgb(0, 0, 0),
+        ZIndex = 2,
+        BorderSizePixel = 0,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Create("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal,
+        HorizontalAlignment = Enum.HorizontalAlignment.Right,
+        VerticalFlex = Enum.UIFlexAlignment.Fill,
+        Parent = Items.Left,
+        Padding = dim(0, 1),
+        SortOrder = Enum.SortOrder.LayoutOrder
+    })
+    
+    Items.LeftTexts = Create("Frame", {
+        LayoutOrder = -100,
+        Parent = Items.Left,
+        BackgroundTransparency = 1,
+        Name = "",
+        BorderColor3 = rgb(0, 0, 0),
+        BorderSizePixel = 0,
+        AutomaticSize = Enum.AutomaticSize.X,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Create("UIListLayout", {
+        Parent = Items.LeftTexts,
+        Padding = dim(0, 1),
+        SortOrder = Enum.SortOrder.LayoutOrder
+    })
+    
+    Items.Bottom = Create("Frame", {
+        Parent = Items.Holder,
+        Size = dim2(1, 0, 0, 0),
+        Name = "",
+        BackgroundTransparency = 1,
+        Position = dim2(0, 0, 1, 1),
+        BorderColor3 = rgb(0, 0, 0),
+        ZIndex = 2,
+        BorderSizePixel = 0,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Create("UIListLayout", {
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+        HorizontalFlex = Enum.UIFlexAlignment.Fill,
+        Parent = Items.Bottom,
+        Padding = dim(0, 1)
+    })
+    
+    Items.BottomTexts = Create("Frame", {
+        LayoutOrder = 1,
+        Parent = Items.Bottom,
+        BackgroundTransparency = 1,
+        Name = "",
+        BorderColor3 = rgb(0, 0, 0),
+        BorderSizePixel = 0,
+        AutomaticSize = Enum.AutomaticSize.XY,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Create("UIListLayout", {
+        Parent = Items.BottomTexts,
+        Padding = dim(0, 1),
+        SortOrder = Enum.SortOrder.LayoutOrder
+    })
+    
+    Items.Top = Create("Frame", {
+        Parent = Items.Holder,
+        Size = dim2(1, 0, 0, 0),
+        Name = "",
+        BackgroundTransparency = 1,
+        Position = dim2(0, 0, 0, -1),
+        BorderColor3 = rgb(0, 0, 0),
+        ZIndex = 2,
+        BorderSizePixel = 0,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Create("UIListLayout", {
+        VerticalAlignment = Enum.VerticalAlignment.Bottom,
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+        HorizontalFlex = Enum.UIFlexAlignment.Fill,
+        Parent = Items.Top,
+        Padding = dim(0, 1)
+    })
+    
+    Items.TopTexts = Create("Frame", {
+        LayoutOrder = -100,
+        Parent = Items.Top,
+        BackgroundTransparency = 1,
+        Name = "",
+        BorderColor3 = rgb(0, 0, 0),
+        BorderSizePixel = 0,
+        AutomaticSize = Enum.AutomaticSize.XY,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Create("UIListLayout", {
+        Parent = Items.TopTexts,
+        Padding = dim(0, 1),
+        SortOrder = Enum.SortOrder.LayoutOrder
+    })
+    
+    Items.Right = Create("Frame", {
+        Parent = Items.Holder,
+        Size = dim2(0, 0, 1, 0),
+        Name = "",
+        BackgroundTransparency = 1,
+        Position = dim2(1, 1, 0, 0),
+        BorderColor3 = rgb(0, 0, 0),
+        ZIndex = 2,
+        BorderSizePixel = 0,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Create("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal,
+        VerticalFlex = Enum.UIFlexAlignment.Fill,
+        Parent = Items.Right,
+        Padding = dim(0, 1),
+        SortOrder = Enum.SortOrder.LayoutOrder
+    })
+    
+    Items.RightTexts = Create("Frame", {
+        LayoutOrder = 100,
+        Parent = Items.Right,
+        BackgroundTransparency = 1,
+        Name = "",
+        BorderColor3 = rgb(0, 0, 0),
+        BorderSizePixel = 0,
+        AutomaticSize = Enum.AutomaticSize.X,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Create("UIListLayout", {
+        Parent = Items.RightTexts,
+        Padding = dim(0, 1),
+        SortOrder = Enum.SortOrder.LayoutOrder
+    })
+    
+    -- Conditionally create elements based on settings
+    if Settings.Box.Enabled then
+        CreateBoxElements(Items, player)
     end
     
+    if Settings.Healthbar.Enabled then
+        CreateHealthbarElements(Items)
+    end
+    
+    if Settings.NameText.Enabled then
+        CreateNameTextElements(Items, player)
+    end
+    
+    if Settings.DistanceText.Enabled then
+        CreateDistanceTextElements(Items)
+    end
+    
+    -- Setup character tracking (always needed)
     local HealthTween = nil
     
     Data.HealthChanged = function(Value)
-        if not Settings.Healthbar.Enabled then
+        if not Settings.Healthbar.Enabled or not Items.Healthbar then
             return
         end
         
@@ -856,6 +868,26 @@ local function CreateObject(player)
         end
     end
     
+    Data.RefreshChams = function()
+        if not Settings.Chams.Enabled then
+            if Data.Highlight then
+                Data.Highlight:Destroy()
+                Data.Highlight = nil
+            end
+            return
+        end
+        
+        local Character = Data.Info.Character
+        if Character then
+            if not Data.Highlight then
+                CreateChamsElements(Data)
+            else
+                Data.Highlight.Adornee = Character
+                Data.Highlight.Enabled = true
+            end
+        end
+    end
+    
     Data.RefreshDescendants = function()
         local Character = player.Character
         if not Character then
@@ -870,12 +902,14 @@ local function CreateObject(player)
         Data.Info.Humanoid = Humanoid
         Data.Info.RootPart = Humanoid.RootPart
         
-        local conn = Humanoid.HealthChanged:Connect(function(h)
-            Data.HealthChanged(h)
-        end)
-        table.insert(EspConnections, conn)
+        if Settings.Healthbar.Enabled then
+            local conn = Humanoid.HealthChanged:Connect(function(h)
+                Data.HealthChanged(h)
+            end)
+            table.insert(EspConnections, conn)
+            Data.HealthChanged(Humanoid.Health)
+        end
         
-        Data.HealthChanged(Humanoid.Health)
         Data.RefreshChams()
     end
     
@@ -896,79 +930,60 @@ local function CreateObject(player)
     end)
     table.insert(EspConnections, conn)
     
-    if Settings.Box.Enabled then
-        if Settings.Box.Type == "Corner" then
-            Items.Corners.Parent = Items.Holder
-            Items.Box.Parent = Cache
-        else
-            Items.Box.Parent = Items.Holder
-            Items.Corners.Parent = Cache
-        end
-    end
-    
-    if Settings.NameText.Enabled then
-        Items.Text.Parent = Items[Settings.NameText.Position .. "Texts"]
-        if Settings.NameText.Position == "Top" or Settings.NameText.Position == "Bottom" then
-            Items.Text.AutomaticSize = Enum.AutomaticSize.Y
-            Items.Text.TextXAlignment = Enum.TextXAlignment.Center
-        else
-            Items.Text.AutomaticSize = Enum.AutomaticSize.XY
-            Items.Text.TextXAlignment = Settings.NameText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
-        end
-    end
-    
-    if Settings.DistanceText.Enabled then
-        Items.Distance.Parent = Items[Settings.DistanceText.Position .. "Texts"]
-        if Settings.DistanceText.Position == "Top" or Settings.DistanceText.Position == "Bottom" then
-            Items.Distance.AutomaticSize = Enum.AutomaticSize.Y
-            Items.Distance.TextXAlignment = Enum.TextXAlignment.Center
-        else
-            Items.Distance.AutomaticSize = Enum.AutomaticSize.XY
-            Items.Distance.TextXAlignment = Settings.DistanceText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
-        end
-    end
-    
-    if Settings.Healthbar.Enabled then
-        Items.Healthbar.Parent = Items[Settings.Healthbar.Position]
-        Items.Healthbar.Visible = true
-    end
-    
-    if Settings.Box.Fill then
-        Items.Holder.BackgroundTransparency = 0
-        if Settings.Box.FillGradientEnabled then
-            Items.HolderGradient.Color = Settings.Box.FillGradient.ColorSequence
-            Items.HolderGradient.Transparency = Settings.Box.FillGradient.Transparency
-            Items.HolderGradient.Rotation = Settings.Box.FillGradient.Rotation
-        end
-    end
-    
     EspPlayers[player.Name] = Data
 end
 
 local function Update()
+    -- Early exit if main ESP is disabled
     if not Settings.Main.Enabled then
+        -- Hide all holders
+        for _, Data in pairs(EspPlayers) do
+            if Data.Items and Data.Items.Holder then
+                Data.Items.Holder.Visible = false
+            end
+        end
         return
     end
     
-    enforceGUIParent()
+    -- Check if any visual features are enabled
+    local hasAnyFeature = Settings.Box.Enabled or Settings.NameText.Enabled or Settings.DistanceText.Enabled or Settings.Healthbar.Enabled
+    
+    if not hasAnyFeature then
+        -- Hide all holders and skip calculations
+        for _, Data in pairs(EspPlayers) do
+            if Data.Items and Data.Items.Holder then
+                Data.Items.Holder.Visible = false
+            end
+        end
+        return
+    end
+    
+    -- Only calculate positions if box or distance text is enabled (they need world position)
+    local needsPositionCalc = Settings.Box.Enabled or Settings.DistanceText.Enabled
     
     for _, Data in pairs(EspPlayers) do
-        if Data.Info and Data.Info.Character and Data.Info.Humanoid and Data.Info.Humanoid.RootPart and Data.Items then
+        if Data.Info and Data.Info.Character and Data.Info.Humanoid and Data.Info.Humanoid.RootPart then
             local Items = Data.Items
-            local BoxSize, BoxPos, OnScreen, Distance = BoxSolve(Data.Info.Humanoid.RootPart)
             local Holder = Items.Holder
             
-            if Holder and Settings.Main.RenderDistance then
-                if Distance and Distance <= Settings.Main.RenderDistance and OnScreen then
-                    Holder.Visible = true
-                    Holder.Position = dim_offset(BoxPos.X, BoxPos.Y)
-                    Holder.Size = dim2(0, BoxSize.X, 0, BoxSize.Y)
+            if Holder then
+                if needsPositionCalc then
+                    local BoxSize, BoxPos, OnScreen, Distance = BoxSolve(Data.Info.Humanoid.RootPart)
                     
-                    if Settings.DistanceText.Enabled and Items.Distance then
-                        Items.Distance.Text = tostring(math.round(Distance)) .. "m"
+                    if Distance and Distance <= Settings.Main.RenderDistance and OnScreen then
+                        Holder.Visible = true
+                        Holder.Position = dim_offset(BoxPos.X, BoxPos.Y)
+                        Holder.Size = dim2(0, BoxSize.X, 0, BoxSize.Y)
+                        
+                        if Settings.DistanceText.Enabled and Items.Distance then
+                            Items.Distance.Text = tostring(math.round(Distance)) .. "m"
+                        end
+                    else
+                        Holder.Visible = false
                     end
                 else
-                    Holder.Visible = false
+                    -- Only healthbar or name text is enabled, still need to show holder but no position calculation needed
+                    Holder.Visible = true
                 end
             end
         end
@@ -994,37 +1009,33 @@ local function Unload()
     if Cache then
         Cache:Destroy()
     end
-    for _, protection in pairs(guiProtections) do
-        if protection then
-            for _, conn in pairs(protection) do
-                if conn and conn.Disconnect then
-                    conn:Disconnect()
-                end
-            end
+end
+
+-- Only create players if at least one feature is enabled at startup
+local function Initialize()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= Players.LocalPlayer then
+            CreateObject(player)
         end
     end
+
+    local playerAddedConn = Players.PlayerAdded:Connect(function(player)
+        if player ~= Players.LocalPlayer then
+            CreateObject(player)
+        end
+    end)
+    table.insert(EspConnections, playerAddedConn)
+
+    local playerRemovingConn = Players.PlayerRemoving:Connect(function(player)
+        if EspPlayers[player.Name] then
+            EspPlayers[player.Name].Destroy()
+        end
+    end)
+    table.insert(EspConnections, playerRemovingConn)
+
+    LoopConnection = RunService:BindToRenderStep("Run Loop", 400, Update)
 end
 
-for _, player in pairs(Players:GetPlayers()) do
-    if player ~= Players.LocalPlayer then
-        CreateObject(player)
-    end
-end
-
-local playerAddedConn = Players.PlayerAdded:Connect(function(player)
-    if player ~= Players.LocalPlayer then
-        CreateObject(player)
-    end
-end)
-table.insert(EspConnections, playerAddedConn)
-
-local playerRemovingConn = Players.PlayerRemoving:Connect(function(player)
-    if EspPlayers[player.Name] then
-        EspPlayers[player.Name].Destroy()
-    end
-end)
-table.insert(EspConnections, playerRemovingConn)
-
-LoopConnection = RunService:BindToRenderStep("Run Loop", 400, Update)
+Initialize()
 
 getgenv().UnloadESP = Unload
