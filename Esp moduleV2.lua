@@ -1,10 +1,11 @@
 --[[
-    ESP Library v2.0
+    ESP Library v2.0 - Clean Version
 ]]
 
 local ESPLibrary = {}
 ESPLibrary.__index = ESPLibrary
 
+-- Dependencies
 local Players = cloneref(game:GetService("Players"))
 local RunService = cloneref(game:GetService("RunService"))
 local Camera = cloneref(workspace.CurrentCamera)
@@ -13,6 +14,7 @@ local CoreGui = cloneref(game:GetService("CoreGui"))
 local HttpService = cloneref(game:GetService("HttpService"))
 local UserInputService = cloneref(game:GetService("UserInputService"))
 
+-- Utility functions
 local function rgb(r, g, b)
     return Color3.fromRGB(r, g, b)
 end
@@ -37,13 +39,21 @@ local function rect(min, max)
     return Rect.new(min, max)
 end
 
+-- Custom Fonts Library
 ESPLibrary.Fonts = {
     Tahoma = { url = "https://github.com/k0nkx/UI-Lib-Tuff/raw/refs/heads/main/Windows-XP-Tahoma.ttf" },
+    Gotham = { url = "https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/Gotham/Regular/Gotham-Regular.ttf" },
+    Ubuntu = { url = "https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/Ubuntu/Regular/Ubuntu-Regular.ttf" },
+    Montserrat = { url = "https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/Montserrat/Regular/Montserrat-Regular.ttf" },
+    Inter = { url = "https://github.com/rsms/inter/raw/master/docs/font-files/Inter-Regular.otf" },
+    Poppins = { url = "https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-Regular.ttf" },
+    Roboto = { url = "https://github.com/google/fonts/raw/main/apache/roboto/static/Roboto-Regular.ttf" },
 }
 
 function ESPLibrary.new(settings)
     local self = setmetatable({}, ESPLibrary)
     
+    -- Default settings
     self.Settings = {
         Main = {
             Enabled = true,
@@ -123,29 +133,9 @@ function ESPLibrary.new(settings)
             Outline = true,
             OutlineColor = rgb(0, 0, 0),
         },
-        WeaponText = {
-            Enabled = false,
-            Color = { Color = rgb(255, 255, 255) },
-            Position = "Bottom",
-            Size = 10,
-            Font = Enum.Font.SourceSans,
-            UseCustomFont = true,
-            CustomFontName = "Tahoma",
-        },
-        Tracer = {
-            Enabled = false,
-            Color = rgb(255, 255, 255),
-            Thickness = 2,
-            Transparency = 0.5,
-        },
-        HeadDot = {
-            Enabled = false,
-            Color = rgb(255, 0, 0),
-            Size = 5,
-            Transparency = 0,
-        },
     }
     
+    -- Override with user settings
     if settings then
         for category, categorySettings in pairs(settings) do
             if self.Settings[category] then
@@ -156,14 +146,14 @@ function ESPLibrary.new(settings)
         end
     end
     
+    -- Internal state
     self.EspPlayers = {}
     self.EspConnections = {}
     self.LoopConnection = nil
     self.LoadedCustomFonts = {}
-    self.TracerLines = {}
-    self.HeadDots = {}
     self.ToggleConnection = nil
     
+    -- GUI containers
     self.ScreenGui = Instance.new("ScreenGui")
     self.ScreenGui.Name = "ESPLibrary"
     self.ScreenGui.IgnoreGuiInset = true
@@ -176,15 +166,10 @@ function ESPLibrary.new(settings)
     self.Cache.ResetOnSpawn = false
     self.Cache.Parent = CoreGui
     
-    self.TracerContainer = Instance.new("Frame")
-    self.TracerContainer.Name = "TracerContainer"
-    self.TracerContainer.BackgroundTransparency = 1
-    self.TracerContainer.Size = UDim2.new(1, 0, 1, 0)
-    self.TracerContainer.Parent = self.ScreenGui
-    
     return self
 end
 
+-- Helper functions
 function ESPLibrary:Create(instance, options)
     local Ins = Instance.new(instance)
     for prop, value in pairs(options) do
@@ -289,14 +274,7 @@ function ESPLibrary:BoxSolve(rootPart)
     return BoxSize, BoxPosition, TopIsRendered, Distance
 end
 
-function ESPLibrary:GetPlayerWeapon(player)
-    local character = player.Character
-    if not character then return nil end
-    local tool = character:FindFirstChildWhichIsA("Tool")
-    if tool then return tool.Name end
-    return nil
-end
-
+-- UI Element Creation Methods
 function ESPLibrary:CreateBoxElements(Items)
     Items.Box = self:Create("Frame", {
         Parent = self.Cache,
@@ -306,7 +284,7 @@ function ESPLibrary:CreateBoxElements(Items)
         BorderSizePixel = 0,
     })
     
-    self:Create("UIStroke", {
+    local stroke = self:Create("UIStroke", {
         Parent = Items.Box,
         LineJoinMode = Enum.LineJoinMode.Miter,
         Thickness = self.Settings.Box.Thickness,
@@ -357,6 +335,7 @@ function ESPLibrary:CreateBoxElements(Items)
         BorderSizePixel = 0,
     })
     
+    -- Corner elements
     Items.BottomLeftX = self:Create("ImageLabel", {
         ScaleType = Enum.ScaleType.Slice,
         Parent = Items.Corners,
@@ -571,40 +550,10 @@ function ESPLibrary:CreateDistanceTextElements(Items)
     end
 end
 
-function ESPLibrary:CreateWeaponTextElements(Items, player)
-    Items.Weapon = self:Create("TextLabel", {
-        TextColor3 = self.Settings.WeaponText.Color.Color,
-        Parent = self.Cache,
-        Name = self.Settings.WeaponText.Position,
-        BackgroundTransparency = 1,
-        Size = dim2(1, 0, 0, 0),
-        BorderSizePixel = 0,
-        AutomaticSize = Enum.AutomaticSize.XY,
-        TextSize = self.Settings.WeaponText.Size,
-        Text = "No Weapon"
-    })
-    
-    self:ApplyFontToText(Items.Weapon, self.Settings.WeaponText)
-    
-    self:Create("UIStroke", {
-        Parent = Items.Weapon,
-        LineJoinMode = Enum.LineJoinMode.Miter,
-        Color = rgb(0, 0, 0),
-        Thickness = 1,
-    })
-    
-    Items.Weapon.Parent = Items[self.Settings.WeaponText.Position .. "Texts"]
-    if self.Settings.WeaponText.Position == "Top" or self.Settings.WeaponText.Position == "Bottom" then
-        Items.Weapon.AutomaticSize = Enum.AutomaticSize.Y
-        Items.Weapon.TextXAlignment = Enum.TextXAlignment.Center
-    else
-        Items.Weapon.AutomaticSize = Enum.AutomaticSize.XY
-        Items.Weapon.TextXAlignment = self.Settings.WeaponText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
-    end
-end
-
 function ESPLibrary:CreateChamsElements(Data)
-    if Data.Highlight then Data.Highlight:Destroy() end
+    if Data.Highlight then
+        Data.Highlight:Destroy()
+    end
     Data.Highlight = self:Create("Highlight", {
         FillColor = self.Settings.Chams.Fill.Color,
         Enabled = self.Settings.Chams.Enabled,
@@ -616,41 +565,13 @@ function ESPLibrary:CreateChamsElements(Data)
     })
 end
 
-function ESPLibrary:CreateTracer(player, screenPos)
-    local lineName = player.Name .. "_Tracer"
-    if self.TracerLines[lineName] then self.TracerLines[lineName]:Destroy() end
-    
-    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-    local line = Instance.new("Frame")
-    line.Name = lineName
-    line.BackgroundColor3 = self.Settings.Tracer.Color
-    line.BackgroundTransparency = self.Settings.Tracer.Transparency
-    line.BorderSizePixel = 0
-    line.Parent = self.TracerContainer
-    
-    local distance = (screenPos - center).Magnitude
-    local angle = math.atan2(screenPos.Y - center.Y, screenPos.X - center.X)
-    
-    line.Size = UDim2.new(0, distance, 0, self.Settings.Tracer.Thickness)
-    line.Position = UDim2.new(0, center.X, 0, center.Y)
-    line.Rotation = math.deg(angle)
-    
-    self.TracerLines[lineName] = line
-end
-
-function ESPLibrary:CreateHeadDot(screenPos)
-    local dot = Instance.new("Frame")
-    dot.BackgroundColor3 = self.Settings.HeadDot.Color
-    dot.BackgroundTransparency = self.Settings.HeadDot.Transparency
-    dot.BorderSizePixel = 0
-    dot.Size = UDim2.new(0, self.Settings.HeadDot.Size, 0, self.Settings.HeadDot.Size)
-    dot.Position = UDim2.new(0, screenPos.X - self.Settings.HeadDot.Size / 2, 0, screenPos.Y - self.Settings.HeadDot.Size / 2)
-    dot.Parent = self.ScreenGui
-    return dot
-end
-
+-- Player Object Creation
 function ESPLibrary:CreateObject(player)
-    local Data = { Items = {}, Info = {} }
+    local Data = {
+        Items = {},
+        Info = {}
+    }
+    
     local Items = Data.Items
     
     Items.Holder = self:Create("Frame", {
@@ -664,11 +585,15 @@ function ESPLibrary:CreateObject(player)
     
     Items.HolderGradient = self:Create("UIGradient", {
         Rotation = 0,
-        Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, rgb(255, 255, 255)), ColorSequenceKeypoint.new(1, rgb(255, 255, 255)) }),
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, rgb(255, 255, 255)),
+            ColorSequenceKeypoint.new(1, rgb(255, 255, 255))
+        }),
         Parent = Items.Holder,
         Enabled = true
     })
     
+    -- Container frames
     Items.Left = self:Create("Frame", {
         Parent = Items.Holder,
         Size = dim2(0, 0, 1, 0),
@@ -795,17 +720,28 @@ function ESPLibrary:CreateObject(player)
         SortOrder = Enum.SortOrder.LayoutOrder
     })
     
-    if self.Settings.Box.Enabled then self:CreateBoxElements(Items) end
-    if self.Settings.Healthbar.Enabled then self:CreateHealthbarElements(Items) end
-    if self.Settings.NameText.Enabled then self:CreateNameTextElements(Items, player) end
-    if self.Settings.DistanceText.Enabled then self:CreateDistanceTextElements(Items) end
-    if self.Settings.WeaponText.Enabled then self:CreateWeaponTextElements(Items, player) end
+    -- Create elements
+    if self.Settings.Box.Enabled then
+        self:CreateBoxElements(Items)
+    end
+    
+    if self.Settings.Healthbar.Enabled then
+        self:CreateHealthbarElements(Items)
+    end
+    
+    if self.Settings.NameText.Enabled then
+        self:CreateNameTextElements(Items, player)
+    end
+    
+    if self.Settings.DistanceText.Enabled then
+        self:CreateDistanceTextElements(Items)
+    end
     
     local HealthTween = nil
-    local lastWeapon = nil
     
     Data.HealthChanged = function(Value)
         if not self.Settings.Healthbar.Enabled or not Items.Healthbar then return end
+        
         local Multiplier = math.clamp(Value / 100, 0, 1)
         local isHorizontal = self.Settings.Healthbar.Position == "Top" or self.Settings.Healthbar.Position == "Bottom"
         
@@ -825,7 +761,10 @@ function ESPLibrary:CreateObject(player)
                 Enum.EasingStyle[self.Settings.Healthbar.EasingStyle],
                 Enum.EasingDirection[self.Settings.Healthbar.EasingDirection]
             )
-            HealthTween = TweenService:Create(Items.HealthbarFade, tweenInfo, { Size = targetSize, Position = targetPosition })
+            HealthTween = TweenService:Create(Items.HealthbarFade, tweenInfo, {
+                Size = targetSize,
+                Position = targetPosition
+            })
             HealthTween:Play()
         else
             Items.HealthbarFade.Size = targetSize
@@ -833,82 +772,84 @@ function ESPLibrary:CreateObject(player)
         end
     end
     
-    Data.UpdateWeapon = function()
-        if not self.Settings.WeaponText.Enabled or not Items.Weapon then return end
-        local weapon = self:GetPlayerWeapon(player)
-        if weapon ~= lastWeapon then
-            lastWeapon = weapon
-            Items.Weapon.Text = weapon or "No Weapon"
-        end
-    end
-    
     Data.RefreshChams = function()
         if not self.Settings.Chams.Enabled then
-            if Data.Highlight then Data.Highlight:Destroy() end
+            if Data.Highlight then
+                Data.Highlight:Destroy()
+                Data.Highlight = nil
+            end
             return
         end
-        if Data.Info.Character then self:CreateChamsElements(Data) end
+        local Character = Data.Info.Character
+        if Character then
+            self:CreateChamsElements(Data)
+        end
     end
     
     Data.RefreshDescendants = function()
         local Character = player.Character
-        if not Character then Character = player.CharacterAdded:Wait() end
+        if not Character then
+            Character = player.CharacterAdded:Wait()
+        end
         local Humanoid = Character:FindFirstChild("Humanoid")
-        if not Humanoid then Humanoid = Character:WaitForChild("Humanoid") end
+        if not Humanoid then
+            Humanoid = Character:WaitForChild("Humanoid")
+        end
         
         Data.Info.Character = Character
         Data.Info.Humanoid = Humanoid
         Data.Info.RootPart = Humanoid.RootPart
         
         if self.Settings.Healthbar.Enabled then
-            local conn = Humanoid.HealthChanged:Connect(function(h) Data.HealthChanged(h) end)
+            local conn = Humanoid.HealthChanged:Connect(function(h)
+                Data.HealthChanged(h)
+            end)
             table.insert(self.EspConnections, conn)
             Data.HealthChanged(Humanoid.Health)
         end
+        
         Data.RefreshChams()
     end
     
     Data.Destroy = function()
         if Items.Holder then Items.Holder:Destroy() end
         if Data.Highlight then Data.Highlight:Destroy() end
-        if self.TracerLines[player.Name .. "_Tracer"] then
-            self.TracerLines[player.Name .. "_Tracer"]:Destroy()
-            self.TracerLines[player.Name .. "_Tracer"] = nil
-        end
         self.EspPlayers[player.Name] = nil
     end
     
     Data.RefreshDescendants()
     
-    local conn = player.CharacterAdded:Connect(function() Data.RefreshDescendants() end)
+    local conn = player.CharacterAdded:Connect(function()
+        Data.RefreshDescendants()
+    end)
     table.insert(self.EspConnections, conn)
-    
-    local weaponConn = RunService.Heartbeat:Connect(function() Data.UpdateWeapon() end)
-    table.insert(self.EspConnections, weaponConn)
     
     self.EspPlayers[player.Name] = Data
 end
 
+-- Update Loop
 function ESPLibrary:Update()
     if not self.Settings.Main.Enabled then
         for _, Data in pairs(self.EspPlayers) do
-            if Data.Items and Data.Items.Holder then Data.Items.Holder.Visible = false end
+            if Data.Items and Data.Items.Holder then
+                Data.Items.Holder.Visible = false
+            end
         end
         return
     end
     
-    local needsPositionCalc = self.Settings.Box.Enabled or self.Settings.DistanceText.Enabled or self.Settings.Tracer.Enabled or self.Settings.HeadDot.Enabled
-    local hasAnyFeature = self.Settings.Box.Enabled or self.Settings.NameText.Enabled or self.Settings.DistanceText.Enabled or self.Settings.Healthbar.Enabled or self.Settings.WeaponText.Enabled
+    local needsPositionCalc = self.Settings.Box.Enabled or self.Settings.DistanceText.Enabled
+    local hasAnyFeature = self.Settings.Box.Enabled or self.Settings.NameText.Enabled or 
+                          self.Settings.DistanceText.Enabled or self.Settings.Healthbar.Enabled
     
-    if not hasAnyFeature and not self.Settings.Tracer.Enabled and not self.Settings.HeadDot.Enabled then
+    if not hasAnyFeature then
         for _, Data in pairs(self.EspPlayers) do
-            if Data.Items and Data.Items.Holder then Data.Items.Holder.Visible = false end
+            if Data.Items and Data.Items.Holder then
+                Data.Items.Holder.Visible = false
+            end
         end
         return
     end
-    
-    for _, dot in pairs(self.HeadDots) do dot:Destroy() end
-    self.HeadDots = {}
     
     for _, Data in pairs(self.EspPlayers) do
         if Data.Info and Data.Info.Character and Data.Info.Humanoid and Data.Info.Humanoid.RootPart then
@@ -923,32 +864,14 @@ function ESPLibrary:Update()
                         Holder.Visible = true
                         Holder.Position = dim_offset(BoxPos.X, BoxPos.Y)
                         Holder.Size = dim2(0, BoxSize.X, 0, BoxSize.Y)
+                        
                         if self.Settings.DistanceText.Enabled and Items.Distance then
                             Items.Distance.Text = tostring(math.round(Distance)) .. "m"
                         end
                     end
-                    
-                    if self.Settings.Tracer.Enabled then
-                        local headPos = Data.Info.Character:FindFirstChild("Head")
-                        if headPos then
-                            local screenPos, _ = self:ConvertScreenPoint(headPos.Position)
-                            self:CreateTracer(Data.Info.Character, screenPos)
-                        end
-                    end
-                    
-                    if self.Settings.HeadDot.Enabled then
-                        local headPos = Data.Info.Character:FindFirstChild("Head")
-                        if headPos then
-                            local screenPos, _ = self:ConvertScreenPoint(headPos.Position)
-                            local dot = self:CreateHeadDot(screenPos)
-                            table.insert(self.HeadDots, dot)
-                        end
-                    end
                 else
-                    if Holder then Holder.Visible = false end
-                    if self.TracerLines[Data.Info.Character.Name .. "_Tracer"] then
-                        self.TracerLines[Data.Info.Character.Name .. "_Tracer"]:Destroy()
-                        self.TracerLines[Data.Info.Character.Name .. "_Tracer"] = nil
+                    if Holder then
+                        Holder.Visible = false
                     end
                 end
             elseif Holder then
@@ -958,23 +881,33 @@ function ESPLibrary:Update()
     end
 end
 
+-- Public API
 function ESPLibrary:Start()
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= Players.LocalPlayer then self:CreateObject(player) end
+        if player ~= Players.LocalPlayer then
+            self:CreateObject(player)
+        end
     end
     
     local playerAddedConn = Players.PlayerAdded:Connect(function(player)
-        if player ~= Players.LocalPlayer then self:CreateObject(player) end
+        if player ~= Players.LocalPlayer then
+            self:CreateObject(player)
+        end
     end)
     table.insert(self.EspConnections, playerAddedConn)
     
     local playerRemovingConn = Players.PlayerRemoving:Connect(function(player)
-        if self.EspPlayers[player.Name] then self.EspPlayers[player.Name].Destroy() end
+        if self.EspPlayers[player.Name] then
+            self.EspPlayers[player.Name].Destroy()
+        end
     end)
     table.insert(self.EspConnections, playerRemovingConn)
     
-    self.LoopConnection = RunService:BindToRenderStep("ESPLibrary_Update", 400, function() self:Update() end)
+    self.LoopConnection = RunService:BindToRenderStep("ESPLibrary_Update", 400, function()
+        self:Update()
+    end)
     
+    -- Keybind toggle
     self.ToggleConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
         if input.KeyCode == Enum.KeyCode[self.Settings.Main.ToggleKey] then
@@ -986,12 +919,26 @@ function ESPLibrary:Start()
 end
 
 function ESPLibrary:Stop()
-    for _, conn in pairs(self.EspConnections) do conn:Disconnect() end
+    for _, conn in pairs(self.EspConnections) do
+        conn:Disconnect()
+    end
     self.EspConnections = {}
-    if self.LoopConnection then RunService:UnbindFromRenderStep("ESPLibrary_Update") end
-    if self.ToggleConnection then self.ToggleConnection:Disconnect() end
-    for _, data in pairs(self.EspPlayers) do if data.Destroy then data.Destroy() end end
+    
+    if self.LoopConnection then
+        RunService:UnbindFromRenderStep("ESPLibrary_Update")
+        self.LoopConnection = nil
+    end
+    
+    if self.ToggleConnection then
+        self.ToggleConnection:Disconnect()
+        self.ToggleConnection = nil
+    end
+    
+    for _, data in pairs(self.EspPlayers) do
+        if data.Destroy then data.Destroy() end
+    end
     self.EspPlayers = {}
+    
     if self.ScreenGui then self.ScreenGui:Destroy() end
     if self.Cache then self.Cache:Destroy() end
 end
@@ -1012,6 +959,158 @@ end
 
 function ESPLibrary:GetSettings()
     return self.Settings
+end
+
+-- UI Integration
+function ESPLibrary:CreateUI(uiLib, notifyCallback)
+    local Window = uiLib:MainWindow("Pixel Sexy ESP")
+    local MainTab = Window:Tab("ESP")
+    
+    -- Left Section
+    local LeftSection = MainTab:Section("Main Controls", "left")
+    
+    local espEnabled = self.Settings.Main.Enabled
+    LeftSection:Toggle("ESP Enabled", espEnabled, function(v)
+        espEnabled = v
+        self.Settings.Main.Enabled = v
+        if notifyCallback then
+            notifyCallback("ESP", v and "Enabled" or "Disabled", v and 2 or 1)
+        end
+    end)
+    
+    LeftSection:Keybind("Toggle Keybind", self.Settings.Main.ToggleKey, true, true, true, function(v)
+        if v then
+            espEnabled = not espEnabled
+            self.Settings.Main.Enabled = espEnabled
+            if notifyCallback then
+                notifyCallback("ESP", espEnabled and "Enabled" or "Disabled", 1)
+            end
+        end
+    end, true)
+    
+    LeftSection:Slider("Render Distance", 500, 5000, self.Settings.Main.RenderDistance, function(v)
+        self.Settings.Main.RenderDistance = v
+    end, false, " studs")
+    
+    LeftSection:Spliter()
+    LeftSection:Label("━━━━━ Box Settings ━━━━━")
+    
+    local boxEnabled = self.Settings.Box.Enabled
+    LeftSection:Toggle("Box ESP", boxEnabled, function(v)
+        boxEnabled = v
+        self.Settings.Box.Enabled = v
+    end)
+    
+    LeftSection:Dropdown("Box Type", {"Box", "Corner"}, self.Settings.Box.Type, false, function(v)
+        self.Settings.Box.Type = v
+    end)
+    
+    LeftSection:Slider("Box Thickness", 1, 5, self.Settings.Box.Thickness, function(v)
+        self.Settings.Box.Thickness = v
+    end, false, "px")
+    
+    LeftSection:Colorpicker("Box Color", self.Settings.Box.Color, function(color)
+        self.Settings.Box.Color = color
+    end)
+    
+    LeftSection:Toggle("Box Fill", self.Settings.Box.Fill, function(v)
+        self.Settings.Box.Fill = v
+    end)
+    
+    LeftSection:Toggle("Gradient Effect", self.Settings.Box.GradientEnabled, function(v)
+        self.Settings.Box.GradientEnabled = v
+    end)
+    
+    LeftSection:Spliter()
+    LeftSection:Label("━━━━━ Chams Settings ━━━━━")
+    
+    local chamsEnabled = self.Settings.Chams.Enabled
+    LeftSection:Toggle("Chams", chamsEnabled, function(v)
+        chamsEnabled = v
+        self.Settings.Chams.Enabled = v
+    end)
+    
+    LeftSection:Colorpicker("Fill Color", self.Settings.Chams.Fill.Color, function(color)
+        self.Settings.Chams.Fill.Color = color
+    end)
+    
+    LeftSection:Slider("Fill Transparency", 0, 1, self.Settings.Chams.Fill.Transparency, function(v)
+        self.Settings.Chams.Fill.Transparency = v
+    end, true)
+    
+    LeftSection:Colorpicker("Outline Color", self.Settings.Chams.Outline.Color, function(color)
+        self.Settings.Chams.Outline.Color = color
+    end)
+    
+    LeftSection:Slider("Outline Transparency", 0, 1, self.Settings.Chams.Outline.Transparency, function(v)
+        self.Settings.Chams.Outline.Transparency = v
+    end, true)
+    
+    -- Right Section
+    local RightSection = MainTab:Section("Visual Settings", "right")
+    
+    RightSection:Label("━━━━━ Healthbar ━━━━━")
+    
+    local healthEnabled = self.Settings.Healthbar.Enabled
+    RightSection:Toggle("Healthbar", healthEnabled, function(v)
+        healthEnabled = v
+        self.Settings.Healthbar.Enabled = v
+    end)
+    
+    RightSection:Dropdown("Position", {"Left", "Right", "Top", "Bottom"}, self.Settings.Healthbar.Position, false, function(v)
+        self.Settings.Healthbar.Position = v
+    end)
+    
+    RightSection:Slider("Thickness", 2, 10, self.Settings.Healthbar.Thickness, function(v)
+        self.Settings.Healthbar.Thickness = v
+    end, false, "px")
+    
+    RightSection:Toggle("Tween Animation", self.Settings.Healthbar.Tween, function(v)
+        self.Settings.Healthbar.Tween = v
+    end)
+    
+    RightSection:Toggle("Gradient", self.Settings.Healthbar.GradientEnabled, function(v)
+        self.Settings.Healthbar.GradientEnabled = v
+    end)
+    
+    RightSection:Spliter()
+    RightSection:Label("━━━━━ Text Settings ━━━━━")
+    
+    local nameEnabled = self.Settings.NameText.Enabled
+    RightSection:Toggle("Name Text", nameEnabled, function(v)
+        nameEnabled = v
+        self.Settings.NameText.Enabled = v
+    end)
+    
+    RightSection:Slider("Name Size", 10, 24, self.Settings.NameText.Size, function(v)
+        self.Settings.NameText.Size = v
+    end, false, "px")
+    
+    RightSection:Colorpicker("Name Color", self.Settings.NameText.Color.Color, function(color)
+        self.Settings.NameText.Color.Color = color
+    end)
+    
+    RightSection:Toggle("Name Outline", self.Settings.NameText.Outline, function(v)
+        self.Settings.NameText.Outline = v
+    end)
+    
+    RightSection:Spliter()
+    
+    local distanceEnabled = self.Settings.DistanceText.Enabled
+    RightSection:Toggle("Distance Text", distanceEnabled, function(v)
+        distanceEnabled = v
+        self.Settings.DistanceText.Enabled = v
+    end)
+    
+    RightSection:Slider("Distance Size", 10, 20, self.Settings.DistanceText.Size, function(v)
+        self.Settings.DistanceText.Size = v
+    end, false, "px")
+    
+    RightSection:Colorpicker("Distance Color", self.Settings.DistanceText.Color.Color, function(color)
+        self.Settings.DistanceText.Color.Color = color
+    end)
+    
+    return self
 end
 
 return ESPLibrary
