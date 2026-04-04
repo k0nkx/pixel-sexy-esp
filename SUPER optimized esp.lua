@@ -519,16 +519,6 @@ local function CreateHealthbarElements(Items)
         BackgroundColor3 = rgb(0, 0, 0)
     })
     
-    Items.HealthbarBackground = Create("Frame", {
-        Parent = Items.Healthbar,
-        Name = "",
-        Position = dim2(0, 1, 0, 1),
-        BorderColor3 = rgb(0, 0, 0),
-        Size = dim2(1, -2, 1, -2),
-        BorderSizePixel = 0,
-        BackgroundColor3 = rgb(0, 0, 0)
-    })
-    
     Items.HealthbarAccent = Create("Frame", {
         Parent = Items.Healthbar,
         Name = "",
@@ -539,9 +529,8 @@ local function CreateHealthbarElements(Items)
         BackgroundColor3 = rgb(255, 255, 255)
     })
     
-
     Items.HealthbarFade = Create("Frame", {
-        Parent = Items.HealthbarAccent,
+        Parent = Items.Healthbar,
         Name = "",
         Position = dim2(0, 1, 0, 1),
         BorderColor3 = rgb(0, 0, 0),
@@ -667,6 +656,7 @@ local function CreateObject(player)
         Enabled = true
     })
     
+    -- Create container frames (always needed for text positioning)
     Items.Left = Create("Frame", {
         Parent = Items.Holder,
         Size = dim2(0, 0, 1, 0),
@@ -817,6 +807,7 @@ local function CreateObject(player)
         SortOrder = Enum.SortOrder.LayoutOrder
     })
     
+    -- Conditionally create elements based on settings
     if Settings.Box.Enabled then
         CreateBoxElements(Items, player)
     end
@@ -833,6 +824,7 @@ local function CreateObject(player)
         CreateDistanceTextElements(Items)
     end
     
+    -- Setup character tracking (always needed)
     local HealthTween = nil
     
     Data.HealthChanged = function(Value)
@@ -847,11 +839,11 @@ local function CreateObject(player)
         local targetPosition
         
         if isHorizontal then
-            targetSize = dim2(Multiplier, -2, 1, -2)
-            targetPosition = dim2(0, 1, 0, 1)
+            targetSize = dim2(1 - Multiplier, -2, 1, -2)
+            targetPosition = dim2(Multiplier, 1, 0, 1)
         else
-            targetSize = dim2(1, 0, Multiplier, 0)
-            targetPosition = dim2(0, 1, 0, 1)
+            targetSize = dim2(1, 0, 1 - Multiplier, 0)
+            targetPosition = dim2(0, 1, Multiplier, 1)
         end
         
         if Settings.Healthbar.Tween and TweenService then
@@ -942,7 +934,9 @@ local function CreateObject(player)
 end
 
 local function Update()
+    -- Early exit if main ESP is disabled
     if not Settings.Main.Enabled then
+        -- Hide all holders
         for _, Data in pairs(EspPlayers) do
             if Data.Items and Data.Items.Holder then
                 Data.Items.Holder.Visible = false
@@ -951,9 +945,11 @@ local function Update()
         return
     end
     
+    -- Check if any visual features are enabled
     local hasAnyFeature = Settings.Box.Enabled or Settings.NameText.Enabled or Settings.DistanceText.Enabled or Settings.Healthbar.Enabled
     
     if not hasAnyFeature then
+        -- Hide all holders and skip calculations
         for _, Data in pairs(EspPlayers) do
             if Data.Items and Data.Items.Holder then
                 Data.Items.Holder.Visible = false
@@ -962,6 +958,7 @@ local function Update()
         return
     end
     
+    -- Only calculate positions if box or distance text is enabled (they need world position)
     local needsPositionCalc = Settings.Box.Enabled or Settings.DistanceText.Enabled
     
     for _, Data in pairs(EspPlayers) do
@@ -985,6 +982,7 @@ local function Update()
                         Holder.Visible = false
                     end
                 else
+                    -- Only healthbar or name text is enabled, still need to show holder but no position calculation needed
                     Holder.Visible = true
                 end
             end
@@ -1013,6 +1011,7 @@ local function Unload()
     end
 end
 
+-- Only create players if at least one feature is enabled at startup
 local function Initialize()
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= Players.LocalPlayer then
@@ -1040,3 +1039,7 @@ end
 Initialize()
 
 getgenv().UnloadESP = Unload
+
+
+
+the healthbar seems to be upside down fix it and make it work make sure not to changeanything else
