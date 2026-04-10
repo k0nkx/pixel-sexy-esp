@@ -1039,7 +1039,3 @@ end
 Initialize()
 
 getgenv().UnloadESP = Unload
-
-
-
-the healthbar seems to be upside down fix it and make it work make sure not to changeanything else
