@@ -1,196 +1,7 @@
--- ESP Library
-local EspLib = {
-    Settings = {
-        Main = {
-            Enabled = true,
-            RenderDistance = 10000,
-            IncludeLocalPlayer = true,
-            UseTeamColor = true,
-        },
-        
-        Chams = {
-            Enabled = true,
-            Fill = { Color = Color3.fromRGB(255, 255, 255), Transparency = 1 },
-            Outline = { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.85 },
-        },
-        
-        Box = {
-            Enabled = true,
-            Type = "Box",
-            GradientEnabled = false,
-            Gradient = {
-                ColorSequence = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 130, 255))
-                }),
-                Rotation = 90,
-                Transparency = NumberSequence.new(0.9)
-            },
-            Fill = false,
-            FillGradientEnabled = true,
-            FillGradient = {
-                ColorSequence = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 130, 255))
-                }),
-                Rotation = 90,
-                Transparency = NumberSequence.new({
-                    NumberSequenceKeypoint.new(0, 0.9),
-                    NumberSequenceKeypoint.new(1, 0.5)
-                })
-            },
-        },
-        
-        Healthbar = {
-            Enabled = true,
-            Position = "Left",
-            Thickness = 3,
-            Tween = true,
-            TweenSpeed = 0.3,
-            EasingStyle = "Quad",
-            EasingDirection = "Out",
-            GradientEnabled = true,
-            Gradient = {
-                ColorSequence = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(246, 199, 255)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 130, 255))
-                }),
-                Rotation = 90,
-            }
-        },
-        
-        HealthText = {
-            Enabled = true,
-            Color = { Color = Color3.fromRGB(255, 255, 255) },
-            Position = "Left",
-            Size = 11,
-            Font = Enum.Font.SourceSans,
-            UseCustomFont = true,
-            CustomFontName = "Tahoma",
-            GradientEnabled = false,
-            Gradient = {
-                ColorSequence = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 130, 255))
-                }),
-                Rotation = 90,
-            }
-        },
-        
-        VelocityText = {
-            Enabled = true,
-            Color = { Color = Color3.fromRGB(255, 255, 255) },
-            Position = "Right",
-            Size = 11,
-            Font = Enum.Font.SourceSans,
-            UseCustomFont = true,
-            CustomFontName = "Tahoma",
-            AverageSamples = 10,
-            GradientEnabled = false,
-            Gradient = {
-                ColorSequence = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 130, 255))
-                }),
-                Rotation = 90,
-            }
-        },
-        
-        NameText = {
-            Enabled = true,
-            Color = { Color = Color3.fromRGB(255, 255, 255) },
-            Position = "Top",
-            Size = 12,
-            Font = Enum.Font.SourceSans,
-            UseCustomFont = true,
-            CustomFontName = "Tahoma",
-            GradientEnabled = false,
-            Gradient = {
-                ColorSequence = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 130, 255))
-                }),
-                Rotation = 90,
-            }
-        },
-        
-        DistanceText = {
-            Enabled = true,
-            Color = { Color = Color3.fromRGB(255, 255, 255) },
-            Position = "Bottom",
-            Size = 12,
-            Font = Enum.Font.SourceSans,
-            UseCustomFont = true,
-            CustomFontName = "Tahoma",
-            GradientEnabled = false,
-            Gradient = {
-                ColorSequence = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 130, 255))
-                }),
-                Rotation = 90,
-            }
-        },
-        
-        EquippedItemText = {
-            Enabled = true,
-            Color = { Color = Color3.fromRGB(255, 255, 255) },
-            Position = "Bottom",
-            Size = 11,
-            Font = Enum.Font.SourceSans,
-            UseCustomFont = true,
-            CustomFontName = "Tahoma",
-            GradientEnabled = false,
-            Gradient = {
-                ColorSequence = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 130, 255))
-                }),
-                Rotation = 90,
-            },
-            HideForTeamKiller = true,
-            KillerTeamName = "Killer",
-        },
-    },
-    
-    _internal = {
-        ScreenGui = nil,
-        Cache = nil,
-        EspPlayers = {},
-        EspConnections = {},
-        LoopConnection = nil,
-        LoadedCustomFonts = {},
-        VelocitySamples = {},
-        Initialized = false,
-    }
-}
+local EspLibrary = {}
+EspLibrary.__index = EspLibrary
 
--- Internal helper functions
-local function rgb(r, g, b)
-    return Color3.fromRGB(r, g, b)
-end
-
-local function dim2(xScale, xOffset, yScale, yOffset)
-    return UDim2.new(xScale, xOffset, yScale, yOffset)
-end
-
-local function dim(scale, offset)
-    return UDim.new(scale, offset)
-end
-
-local function dim_offset(x, y)
-    return UDim2.new(0, x, 0, y)
-end
-
-local function vec2(x, y)
-    return Vector2.new(x, y)
-end
-
-local function rect(min, max)
-    return Rect.new(min, max)
-end
-
+-- Configuration
 local CustomFonts = {
     Tahoma = { url = "https://github.com/k0nkx/UI-Lib-Tuff/raw/refs/heads/main/Windows-XP-Tahoma.ttf" },
     Gotham = { url = "https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/Gotham/Regular/Gotham-Regular.ttf" },
@@ -222,6 +33,59 @@ local CustomFonts = {
     Lexend = { url = "https://github.com/google/fonts/raw/main/ofl/lexend/static/Lexend-Regular.ttf" }
 }
 
+function EspLibrary.new()
+    local self = setmetatable({}, EspLibrary)
+    
+    self.Players = true
+    self.Boxes = true
+    self.Chams = true
+    self.Names = true
+    self.Health = true
+    self.HealthText = true
+    self.Velocity = true
+    self.Distance = true
+    self.EquippedItem = true
+    self.TeamMates = true
+    self.RenderDistance = 10000
+    self.BoxType = "Box" -- "Box" or "Corner"
+    self.IncludeLocalPlayer = true
+    
+    self._loaded = false
+    self._espPlayers = {}
+    self._connections = {}
+    self._loopConnection = nil
+    self._loadedCustomFonts = {}
+    self._velocitySamples = {}
+    self._settings = {}
+    
+    return self
+end
+
+-- Helper functions
+local function rgb(r, g, b)
+    return Color3.fromRGB(r, g, b)
+end
+
+local function dim2(xScale, xOffset, yScale, yOffset)
+    return UDim2.new(xScale, xOffset, yScale, yOffset)
+end
+
+local function dim(scale, offset)
+    return UDim.new(scale, offset)
+end
+
+local function dim_offset(x, y)
+    return UDim2.new(0, x, 0, y)
+end
+
+local function vec2(x, y)
+    return Vector2.new(x, y)
+end
+
+local function rect(min, max)
+    return Rect.new(min, max)
+end
+
 local function Create(instance, options)
     local Ins = Instance.new(instance)
     for prop, value in pairs(options) do
@@ -230,7 +94,238 @@ local function Create(instance, options)
     return Ins
 end
 
-function EspLib._internal.LoadCustomFont(fontName)
+function EspLibrary:rgb(r, g, b)
+    return Color3.fromRGB(r, g, b)
+end
+
+function EspLibrary:Load()
+    if self._loaded then
+        self:Unload()
+        wait(0.1)
+    end
+    
+    self._loaded = true
+    
+    -- Setup services
+    self.PlayersService = cloneref(game:GetService("Players"))
+    self.RunService = cloneref(game:GetService("RunService"))
+    self.Camera = cloneref(workspace.CurrentCamera)
+    self.TweenService = cloneref(game:GetService("TweenService"))
+    self.CoreGui = cloneref(game:GetService("CoreGui"))
+    self.HttpService = cloneref(game:GetService("HttpService"))
+    
+    -- Create GUIs
+    self.ScreenGui = Instance.new("ScreenGui")
+    self.ScreenGui.Name = "EspObject"
+    self.ScreenGui.IgnoreGuiInset = true
+    self.ScreenGui.ResetOnSpawn = false
+    self.ScreenGui.Parent = self.CoreGui
+    
+    self.Cache = Instance.new("ScreenGui")
+    self.Cache.Name = "EspCache"
+    self.Cache.Enabled = false
+    self.Cache.ResetOnSpawn = false
+    self.Cache.Parent = self.CoreGui
+    
+    -- Initialize
+    self:_Initialize()
+    
+    return self
+end
+
+function EspLibrary:Unload()
+    if not self._loaded then return end
+    
+    for _, conn in pairs(self._connections) do
+        conn:Disconnect()
+    end
+    self._connections = {}
+    
+    if self._loopConnection then
+        self.RunService:UnbindFromRenderStep("Run Loop")
+        self._loopConnection = nil
+    end
+    
+    for _, data in pairs(self._espPlayers) do
+        if data.Destroy then
+            data:Destroy()
+        end
+    end
+    self._espPlayers = {}
+    
+    if self.ScreenGui then
+        self.ScreenGui:Destroy()
+        self.ScreenGui = nil
+    end
+    if self.Cache then
+        self.Cache:Destroy()
+        self.Cache = nil
+    end
+    
+    self._loaded = false
+end
+
+function EspLibrary:Toggle(enabled)
+    self.Players = enabled
+    self:_UpdateSettings()
+end
+
+function EspLibrary:Update()
+    self:_UpdateSettings()
+end
+
+function EspLibrary:_UpdateSettings()
+    if not self._loaded then return end
+    
+    self._settings = {
+        Main = {
+            Enabled = self.Players,
+            RenderDistance = self.RenderDistance,
+            IncludeLocalPlayer = self.IncludeLocalPlayer,
+            UseTeamColor = self.TeamMates,
+        },
+        Chams = {
+            Enabled = self.Chams,
+            Fill = { Color = rgb(255, 255, 255), Transparency = 1 },
+            Outline = { Color = rgb(255, 255, 255), Transparency = 0.85 },
+        },
+        Box = {
+            Enabled = self.Boxes,
+            Type = self.BoxType,
+            GradientEnabled = false,
+            Gradient = {
+                ColorSequence = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, rgb(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1, rgb(235, 130, 255))
+                }),
+                Rotation = 90,
+                Transparency = NumberSequence.new(0.9)
+            },
+            Fill = false,
+            FillGradientEnabled = true,
+            FillGradient = {
+                ColorSequence = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, rgb(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1, rgb(235, 130, 255))
+                }),
+                Rotation = 90,
+                Transparency = NumberSequence.new({
+                    NumberSequenceKeypoint.new(0, 0.9),
+                    NumberSequenceKeypoint.new(1, 0.5)
+                })
+            },
+        },
+        Healthbar = {
+            Enabled = self.Health,
+            Position = "Left",
+            Thickness = 3,
+            Tween = true,
+            TweenSpeed = 0.3,
+            EasingStyle = "Quad",
+            EasingDirection = "Out",
+            GradientEnabled = true,
+            Gradient = {
+                ColorSequence = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, rgb(255, 255, 255)),
+                    ColorSequenceKeypoint.new(0.5, rgb(246, 199, 255)),
+                    ColorSequenceKeypoint.new(1, rgb(235, 130, 255))
+                }),
+                Rotation = 90,
+            }
+        },
+        HealthText = {
+            Enabled = self.HealthText,
+            Color = { Color = rgb(255, 255, 255) },
+            Position = "Left",
+            Size = 11,
+            Font = Enum.Font.SourceSans,
+            UseCustomFont = true,
+            CustomFontName = "Tahoma",
+            GradientEnabled = false,
+            Gradient = {
+                ColorSequence = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, rgb(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1, rgb(235, 130, 255))
+                }),
+                Rotation = 90,
+            }
+        },
+        VelocityText = {
+            Enabled = self.Velocity,
+            Color = { Color = rgb(255, 255, 255) },
+            Position = "Right",
+            Size = 11,
+            Font = Enum.Font.SourceSans,
+            UseCustomFont = true,
+            CustomFontName = "Tahoma",
+            AverageSamples = 10,
+            GradientEnabled = false,
+            Gradient = {
+                ColorSequence = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, rgb(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1, rgb(235, 130, 255))
+                }),
+                Rotation = 90,
+            }
+        },
+        NameText = {
+            Enabled = self.Names,
+            Color = { Color = rgb(255, 255, 255) },
+            Position = "Top",
+            Size = 12,
+            Font = Enum.Font.SourceSans,
+            UseCustomFont = true,
+            CustomFontName = "Tahoma",
+            GradientEnabled = false,
+            Gradient = {
+                ColorSequence = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, rgb(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1, rgb(235, 130, 255))
+                }),
+                Rotation = 90,
+            }
+        },
+        DistanceText = {
+            Enabled = self.Distance,
+            Color = { Color = rgb(255, 255, 255) },
+            Position = "Bottom",
+            Size = 12,
+            Font = Enum.Font.SourceSans,
+            UseCustomFont = true,
+            CustomFontName = "Tahoma",
+            GradientEnabled = false,
+            Gradient = {
+                ColorSequence = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, rgb(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1, rgb(235, 130, 255))
+                }),
+                Rotation = 90,
+            }
+        },
+        EquippedItemText = {
+            Enabled = self.EquippedItem,
+            Color = { Color = rgb(255, 255, 255) },
+            Position = "Bottom",
+            Size = 11,
+            Font = Enum.Font.SourceSans,
+            UseCustomFont = true,
+            CustomFontName = "Tahoma",
+            GradientEnabled = false,
+            Gradient = {
+                ColorSequence = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, rgb(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1, rgb(235, 130, 255))
+                }),
+                Rotation = 90,
+            },
+            HideForTeamKiller = true,
+            KillerTeamName = "Killer",
+        },
+    }
+end
+
+-- Core ESP functions
+function EspLibrary:_LoadCustomFont(fontName)
     local fontData = CustomFonts[fontName]
     if not fontData then return nil end
     
@@ -266,7 +361,7 @@ function EspLib._internal.LoadCustomFont(fontName)
     }
     
     local jsonSuccess = pcall(function()
-        writefile(fontFileName, HttpService:JSONEncode(fontConfig))
+        writefile(fontFileName, self.HttpService:JSONEncode(fontConfig))
     end)
     
     if not jsonSuccess then
@@ -283,12 +378,12 @@ function EspLib._internal.LoadCustomFont(fontName)
     return nil
 end
 
-function EspLib._internal.ApplyFontToText(textLabel, settings)
+function EspLibrary:_ApplyFontToText(textLabel, settings)
     if settings.UseCustomFont then
-        if not EspLib._internal.LoadedCustomFonts[settings.CustomFontName] then
-            local font = EspLib._internal.LoadCustomFont(settings.CustomFontName)
+        if not self._loadedCustomFonts[settings.CustomFontName] then
+            local font = self:_LoadCustomFont(settings.CustomFontName)
             if font then
-                EspLib._internal.LoadedCustomFonts[settings.CustomFontName] = font
+                self._loadedCustomFonts[settings.CustomFontName] = font
                 textLabel.FontFace = font
                 return true
             else
@@ -296,7 +391,7 @@ function EspLib._internal.ApplyFontToText(textLabel, settings)
                 return false
             end
         else
-            textLabel.FontFace = EspLib._internal.LoadedCustomFonts[settings.CustomFontName]
+            textLabel.FontFace = self._loadedCustomFonts[settings.CustomFontName]
             return true
         end
     else
@@ -305,11 +400,11 @@ function EspLib._internal.ApplyFontToText(textLabel, settings)
     end
 end
 
-function EspLib._internal.CreateTextLabel(textSettings, defaultText, player)
+function EspLibrary:_CreateTextLabel(textSettings, defaultText, player)
     local label = Create("TextLabel", {
         TextColor3 = textSettings.Color.Color,
         BorderColor3 = rgb(0, 0, 0),
-        Parent = EspLib._internal.Cache,
+        Parent = self.Cache,
         Name = textSettings.Position,
         Text = defaultText,
         BackgroundTransparency = 1,
@@ -321,7 +416,7 @@ function EspLib._internal.CreateTextLabel(textSettings, defaultText, player)
         ZIndex = 2
     })
     
-    EspLib._internal.ApplyFontToText(label, textSettings)
+    self:_ApplyFontToText(label, textSettings)
     
     local stroke = Create("UIStroke", {
         Parent = label,
@@ -339,12 +434,12 @@ function EspLib._internal.CreateTextLabel(textSettings, defaultText, player)
     return label
 end
 
-function EspLib._internal.ConvertScreenPoint(world_position)
-    local ViewportSize = Camera.ViewportSize
-    local LocalPos = Camera.CFrame:PointToObjectSpace(world_position)
+function EspLibrary:_ConvertScreenPoint(world_position)
+    local ViewportSize = self.Camera.ViewportSize
+    local LocalPos = self.Camera.CFrame:PointToObjectSpace(world_position)
     
     local AspectRatio = ViewportSize.X / ViewportSize.Y
-    local HalfY = -LocalPos.Z * math.tan(math.rad(Camera.FieldOfView / 2))
+    local HalfY = -LocalPos.Z * math.tan(math.rad(self.Camera.FieldOfView / 2))
     local HalfX = AspectRatio * HalfY
     
     local FarPlaneCorner = Vector3.new(-HalfX, HalfY, LocalPos.Z)
@@ -358,17 +453,17 @@ function EspLib._internal.ConvertScreenPoint(world_position)
     return Vector3.new(ScreenX * ViewportSize.X, ScreenY * ViewportSize.Y, -LocalPos.Z), OnScreen
 end
 
-function EspLib._internal.BoxSolve(rootPart)
+function EspLibrary:_BoxSolve(rootPart)
     if not rootPart then
         return nil, nil, nil, nil
     end
     
-    local ViewportTop = rootPart.Position + (rootPart.CFrame.UpVector * 1.8) + Camera.CFrame.UpVector
-    local ViewportBottom = rootPart.Position - (rootPart.CFrame.UpVector * 2.5) - Camera.CFrame.UpVector
-    local Distance = (rootPart.Position - Camera.CFrame.Position).Magnitude
+    local ViewportTop = rootPart.Position + (rootPart.CFrame.UpVector * 1.8) + self.Camera.CFrame.UpVector
+    local ViewportBottom = rootPart.Position - (rootPart.CFrame.UpVector * 2.5) - self.Camera.CFrame.UpVector
+    local Distance = (rootPart.Position - self.Camera.CFrame.Position).Magnitude
     
-    local Top, TopIsRendered = EspLib._internal.ConvertScreenPoint(ViewportTop)
-    local Bottom, BottomIsRendered = EspLib._internal.ConvertScreenPoint(ViewportBottom)
+    local Top, TopIsRendered = self:_ConvertScreenPoint(ViewportTop)
+    local Bottom, BottomIsRendered = self:_ConvertScreenPoint(ViewportBottom)
     
     local Width = math.max(math.floor(math.abs(Top.X - Bottom.X)), 8)
     local Height = math.max(math.floor(math.max(math.abs(Bottom.Y - Top.Y), Width / 2)), 12)
@@ -378,8 +473,8 @@ function EspLib._internal.BoxSolve(rootPart)
     return BoxSize, BoxPosition, TopIsRendered, Distance
 end
 
-function EspLib._internal.GetTeamColor(player)
-    if not EspLib.Settings.Main.UseTeamColor then
+function EspLibrary:_GetTeamColor(player)
+    if not self._settings.Main.UseTeamColor then
         return nil
     end
     
@@ -390,7 +485,7 @@ function EspLib._internal.GetTeamColor(player)
     return nil
 end
 
-function EspLib._internal.GetVelocity(player)
+function EspLibrary:_GetVelocity(player)
     if not player or not player.Character then
         return 0
     end
@@ -408,17 +503,17 @@ function EspLib._internal.GetVelocity(player)
     return velocity.Magnitude
 end
 
-function EspLib._internal.GetAverageVelocity(player)
-    if not EspLib._internal.VelocitySamples[player.Name] then
-        EspLib._internal.VelocitySamples[player.Name] = {}
+function EspLibrary:_GetAverageVelocity(player)
+    if not self._velocitySamples[player.Name] then
+        self._velocitySamples[player.Name] = {}
     end
     
-    local samples = EspLib._internal.VelocitySamples[player.Name]
-    local currentVel = EspLib._internal.GetVelocity(player)
+    local samples = self._velocitySamples[player.Name]
+    local currentVel = self:_GetVelocity(player)
     
     table.insert(samples, currentVel)
     
-    local maxSamples = EspLib.Settings.VelocityText.AverageSamples or 10
+    local maxSamples = self._settings.VelocityText.AverageSamples or 10
     if #samples > maxSamples then
         table.remove(samples, 1)
     end
@@ -431,7 +526,7 @@ function EspLib._internal.GetAverageVelocity(player)
     return sum / #samples
 end
 
-function EspLib._internal.GetEquippedItem(player)
+function EspLibrary:_GetEquippedItem(player)
     if not player then
         return nil
     end
@@ -439,23 +534,24 @@ function EspLib._internal.GetEquippedItem(player)
     return player:GetAttribute("EquippedItem")
 end
 
-function EspLib._internal.ShouldHideForTeam(player)
-    if not EspLib.Settings.EquippedItemText.HideForTeamKiller then
+function EspLibrary:_ShouldHideForTeam(player)
+    if not self._settings.EquippedItemText.HideForTeamKiller then
         return false
     end
     
     local team = player.Team
-    if team and team.Name == EspLib.Settings.EquippedItemText.KillerTeamName then
+    if team and team.Name == self._settings.EquippedItemText.KillerTeamName then
         return true
     end
     return false
 end
 
-function EspLib._internal.CreateBoxElements(Items, player)
-    local teamColor = EspLib._internal.GetTeamColor(player)
+function EspLibrary:_CreateBoxElements(Items, player)
+    local teamColor = self:_GetTeamColor(player)
+    local settings = self._settings
     
     Items.Box = Create("Frame", {
-        Parent = EspLib._internal.Cache,
+        Parent = self.Cache,
         Name = "",
         BackgroundTransparency = 1,
         Position = dim2(0, 1, 0, 1),
@@ -489,9 +585,9 @@ function EspLib._internal.CreateBoxElements(Items, player)
     
     Items.BoxGradient = Create("UIGradient", {
         Parent = Items.UIStroke,
-        Color = EspLib.Settings.Box.Gradient.ColorSequence,
-        Enabled = EspLib.Settings.Box.GradientEnabled,
-        Rotation = EspLib.Settings.Box.Gradient.Rotation
+        Color = settings.Box.Gradient.ColorSequence,
+        Enabled = settings.Box.GradientEnabled,
+        Rotation = settings.Box.Gradient.Rotation
     })
     
     if teamColor then
@@ -516,7 +612,7 @@ function EspLib._internal.CreateBoxElements(Items, player)
     })
     
     Items.Corners = Create("Frame", {
-        Parent = EspLib._internal.Cache,
+        Parent = self.Cache,
         Name = "",
         BackgroundTransparency = 1,
         BorderColor3 = rgb(0, 0, 0),
@@ -690,29 +786,29 @@ function EspLib._internal.CreateBoxElements(Items, player)
         gradient.Color = ColorSequence.new(teamColor)
     end
     
-    if EspLib.Settings.Box.Type == "Corner" then
+    if settings.Box.Type == "Corner" then
         Items.Corners.Parent = Items.Holder
-        Items.Box.Parent = EspLib._internal.Cache
+        Items.Box.Parent = self.Cache
     else
         Items.Box.Parent = Items.Holder
-        Items.Corners.Parent = EspLib._internal.Cache
+        Items.Corners.Parent = self.Cache
     end
     
-    if EspLib.Settings.Box.Fill then
+    if settings.Box.Fill then
         Items.Holder.BackgroundTransparency = 0
-        if EspLib.Settings.Box.FillGradientEnabled then
-            Items.HolderGradient.Color = EspLib.Settings.Box.FillGradient.ColorSequence
-            Items.HolderGradient.Transparency = EspLib.Settings.Box.FillGradient.Transparency
-            Items.HolderGradient.Rotation = EspLib.Settings.Box.FillGradient.Rotation
+        if settings.Box.FillGradientEnabled then
+            Items.HolderGradient.Color = settings.Box.FillGradient.ColorSequence
+            Items.HolderGradient.Transparency = settings.Box.FillGradient.Transparency
+            Items.HolderGradient.Rotation = settings.Box.FillGradient.Rotation
         end
     else
         Items.Holder.BackgroundTransparency = 1
         Items.HolderGradient.Enabled = false
     end
     
-    if EspLib.Settings.Main.UseTeamColor then
+    if settings.Main.UseTeamColor then
         local teamConn = player:GetPropertyChangedSignal("Team"):Connect(function()
-            local newColor = EspLib._internal.GetTeamColor(player)
+            local newColor = self:_GetTeamColor(player)
             if newColor and Items.UIStroke then
                 Items.UIStroke.Color = newColor
                 for _, child in pairs(Items.Corners:GetChildren()) do
@@ -725,16 +821,18 @@ function EspLib._internal.CreateBoxElements(Items, player)
                 end
             end
         end)
-        table.insert(EspLib._internal.EspConnections, teamConn)
+        table.insert(self._connections, teamConn)
     end
 end
 
-function EspLib._internal.CreateHealthbarElements(Items)
+function EspLibrary:_CreateHealthbarElements(Items)
+    local settings = self._settings
+    
     Items.Healthbar = Create("Frame", {
-        Name = EspLib.Settings.Healthbar.Position,
-        Parent = EspLib._internal.Cache,
+        Name = settings.Healthbar.Position,
+        Parent = self.Cache,
         BorderColor3 = rgb(0, 0, 0),
-        Size = dim2(0, EspLib.Settings.Healthbar.Thickness, 0, EspLib.Settings.Healthbar.Thickness),
+        Size = dim2(0, settings.Healthbar.Thickness, 0, settings.Healthbar.Thickness),
         BorderSizePixel = 0,
         BackgroundColor3 = rgb(0, 0, 0),
         ZIndex = 1,
@@ -764,97 +862,99 @@ function EspLib._internal.CreateHealthbarElements(Items)
     })
     
     Items.HealthbarGradient = Create("UIGradient", {
-        Enabled = EspLib.Settings.Healthbar.GradientEnabled,
+        Enabled = settings.Healthbar.GradientEnabled,
         Parent = Items.HealthbarAccent,
-        Rotation = EspLib.Settings.Healthbar.Gradient.Rotation,
-        Color = EspLib.Settings.Healthbar.Gradient.ColorSequence
+        Rotation = settings.Healthbar.Gradient.Rotation,
+        Color = settings.Healthbar.Gradient.ColorSequence
     })
     
-    Items.Healthbar.Parent = Items[EspLib.Settings.Healthbar.Position]
+    Items.Healthbar.Parent = Items[settings.Healthbar.Position]
     Items.Healthbar.Visible = true
 end
 
-function EspLib._internal.CreateHealthTextElements(Items, player)
-    Items.HealthText = EspLib._internal.CreateTextLabel(EspLib.Settings.HealthText, "100", player)
-    Items.HealthText.Parent = Items[EspLib.Settings.HealthText.Position .. "Texts"]
-    if EspLib.Settings.HealthText.Position == "Top" or EspLib.Settings.HealthText.Position == "Bottom" then
+function EspLibrary:_CreateHealthTextElements(Items, player)
+    local settings = self._settings
+    Items.HealthText = self:_CreateTextLabel(settings.HealthText, "100", player)
+    Items.HealthText.Parent = Items[settings.HealthText.Position .. "Texts"]
+    if settings.HealthText.Position == "Top" or settings.HealthText.Position == "Bottom" then
         Items.HealthText.AutomaticSize = Enum.AutomaticSize.Y
         Items.HealthText.TextXAlignment = Enum.TextXAlignment.Center
     else
         Items.HealthText.AutomaticSize = Enum.AutomaticSize.XY
-        Items.HealthText.TextXAlignment = EspLib.Settings.HealthText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
+        Items.HealthText.TextXAlignment = settings.HealthText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
     end
 end
 
-function EspLib._internal.CreateVelocityTextElements(Items, player)
-    Items.VelocityText = EspLib._internal.CreateTextLabel(EspLib.Settings.VelocityText, "0", player)
-    Items.VelocityText.Parent = Items[EspLib.Settings.VelocityText.Position .. "Texts"]
-    if EspLib.Settings.VelocityText.Position == "Top" or EspLib.Settings.VelocityText.Position == "Bottom" then
+function EspLibrary:_CreateVelocityTextElements(Items, player)
+    local settings = self._settings
+    Items.VelocityText = self:_CreateTextLabel(settings.VelocityText, "0", player)
+    Items.VelocityText.Parent = Items[settings.VelocityText.Position .. "Texts"]
+    if settings.VelocityText.Position == "Top" or settings.VelocityText.Position == "Bottom" then
         Items.VelocityText.AutomaticSize = Enum.AutomaticSize.Y
         Items.VelocityText.TextXAlignment = Enum.TextXAlignment.Center
     else
         Items.VelocityText.AutomaticSize = Enum.AutomaticSize.XY
-        Items.VelocityText.TextXAlignment = EspLib.Settings.VelocityText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
+        Items.VelocityText.TextXAlignment = settings.VelocityText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
     end
 end
 
-function EspLib._internal.CreateNameTextElements(Items, player)
-    Items.Text = EspLib._internal.CreateTextLabel(EspLib.Settings.NameText, player.Name, player)
-    Items.Text.Parent = Items[EspLib.Settings.NameText.Position .. "Texts"]
-    if EspLib.Settings.NameText.Position == "Top" or EspLib.Settings.NameText.Position == "Bottom" then
+function EspLibrary:_CreateNameTextElements(Items, player)
+    local settings = self._settings
+    Items.Text = self:_CreateTextLabel(settings.NameText, player.Name, player)
+    Items.Text.Parent = Items[settings.NameText.Position .. "Texts"]
+    if settings.NameText.Position == "Top" or settings.NameText.Position == "Bottom" then
         Items.Text.AutomaticSize = Enum.AutomaticSize.Y
         Items.Text.TextXAlignment = Enum.TextXAlignment.Center
     else
         Items.Text.AutomaticSize = Enum.AutomaticSize.XY
-        Items.Text.TextXAlignment = EspLib.Settings.NameText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
+        Items.Text.TextXAlignment = settings.NameText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
     end
 end
 
-function EspLib._internal.CreateDistanceTextElements(Items)
-    Items.Distance = EspLib._internal.CreateTextLabel(EspLib.Settings.DistanceText, "0m", nil)
-    Items.Distance.Parent = Items[EspLib.Settings.DistanceText.Position .. "Texts"]
-    if EspLib.Settings.DistanceText.Position == "Top" or EspLib.Settings.DistanceText.Position == "Bottom" then
+function EspLibrary:_CreateDistanceTextElements(Items)
+    local settings = self._settings
+    Items.Distance = self:_CreateTextLabel(settings.DistanceText, "0m", nil)
+    Items.Distance.Parent = Items[settings.DistanceText.Position .. "Texts"]
+    if settings.DistanceText.Position == "Top" or settings.DistanceText.Position == "Bottom" then
         Items.Distance.AutomaticSize = Enum.AutomaticSize.Y
         Items.Distance.TextXAlignment = Enum.TextXAlignment.Center
     else
         Items.Distance.AutomaticSize = Enum.AutomaticSize.XY
-        Items.Distance.TextXAlignment = EspLib.Settings.DistanceText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
+        Items.Distance.TextXAlignment = settings.DistanceText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
     end
 end
 
-function EspLib._internal.CreateEquippedItemTextElements(Items, player)
-    Items.EquippedItem = EspLib._internal.CreateTextLabel(EspLib.Settings.EquippedItemText, "", player)
-    Items.EquippedItem.Parent = Items[EspLib.Settings.EquippedItemText.Position .. "Texts"]
-    if EspLib.Settings.EquippedItemText.Position == "Top" or EspLib.Settings.EquippedItemText.Position == "Bottom" then
+function EspLibrary:_CreateEquippedItemTextElements(Items, player)
+    local settings = self._settings
+    Items.EquippedItem = self:_CreateTextLabel(settings.EquippedItemText, "", player)
+    Items.EquippedItem.Parent = Items[settings.EquippedItemText.Position .. "Texts"]
+    if settings.EquippedItemText.Position == "Top" or settings.EquippedItemText.Position == "Bottom" then
         Items.EquippedItem.AutomaticSize = Enum.AutomaticSize.Y
         Items.EquippedItem.TextXAlignment = Enum.TextXAlignment.Center
     else
         Items.EquippedItem.AutomaticSize = Enum.AutomaticSize.XY
-        Items.EquippedItem.TextXAlignment = EspLib.Settings.EquippedItemText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
+        Items.EquippedItem.TextXAlignment = settings.EquippedItemText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
     end
 end
 
-function EspLib._internal.CreateChamsElements(Data)
-    if Data.Highlight then
-        Data.Highlight:Destroy()
-        Data.Highlight = nil
-    end
+function EspLibrary:_CreateChamsElements(Data)
+    local settings = self._settings
+    Data.Highlight = Create("Highlight", {
+        FillColor = settings.Chams.Fill.Color,
+        Enabled = settings.Chams.Enabled,
+        OutlineTransparency = settings.Chams.Outline.Transparency,
+        Adornee = Data.Info.Character,
+        FillTransparency = settings.Chams.Fill.Transparency,
+        OutlineColor = settings.Chams.Outline.Color,
+        Parent = self.CoreGui,
+        DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    })
+end
+
+function EspLibrary:_CreateObject(player)
+    local selfRef = self
+    local settings = self._settings
     
-    if EspLib.Settings.Chams.Enabled and EspLib.Settings.Main.Enabled then
-        Data.Highlight = Create("Highlight", {
-            FillColor = EspLib.Settings.Chams.Fill.Color,
-            Enabled = true,
-            OutlineTransparency = EspLib.Settings.Chams.Outline.Transparency,
-            Adornee = Data.Info.Character,
-            FillTransparency = EspLib.Settings.Chams.Fill.Transparency,
-            OutlineColor = EspLib.Settings.Chams.Outline.Color,
-            Parent = CoreGui,
-            DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-        })
-    end
-end
-
-function EspLib._internal.CreateObject(player)
     local Data = {
         Items = {},
         Info = {}
@@ -862,10 +962,10 @@ function EspLib._internal.CreateObject(player)
     
     local Items = Data.Items
     
-    EspLib._internal.VelocitySamples[player.Name] = {}
+    self._velocitySamples[player.Name] = {}
     
     Items.Holder = Create("Frame", {
-        Parent = EspLib._internal.ScreenGui,
+        Parent = self.ScreenGui,
         Visible = false,
         Name = "",
         BackgroundTransparency = 1,
@@ -1038,40 +1138,40 @@ function EspLib._internal.CreateObject(player)
         SortOrder = Enum.SortOrder.LayoutOrder
     })
     
-    if EspLib.Settings.Box.Enabled then
-        EspLib._internal.CreateBoxElements(Items, player)
+    if settings.Box.Enabled then
+        self:_CreateBoxElements(Items, player)
     end
     
-    if EspLib.Settings.Healthbar.Enabled then
-        EspLib._internal.CreateHealthbarElements(Items)
+    if settings.Healthbar.Enabled then
+        self:_CreateHealthbarElements(Items)
     end
     
-    if EspLib.Settings.HealthText.Enabled then
-        EspLib._internal.CreateHealthTextElements(Items, player)
+    if settings.HealthText.Enabled then
+        self:_CreateHealthTextElements(Items, player)
     end
     
-    if EspLib.Settings.VelocityText.Enabled then
-        EspLib._internal.CreateVelocityTextElements(Items, player)
+    if settings.VelocityText.Enabled then
+        self:_CreateVelocityTextElements(Items, player)
     end
     
-    if EspLib.Settings.NameText.Enabled then
-        EspLib._internal.CreateNameTextElements(Items, player)
+    if settings.NameText.Enabled then
+        self:_CreateNameTextElements(Items, player)
     end
     
-    if EspLib.Settings.DistanceText.Enabled then
-        EspLib._internal.CreateDistanceTextElements(Items)
+    if settings.DistanceText.Enabled then
+        self:_CreateDistanceTextElements(Items)
     end
     
-    if EspLib.Settings.EquippedItemText.Enabled then
-        EspLib._internal.CreateEquippedItemTextElements(Items, player)
+    if settings.EquippedItemText.Enabled then
+        self:_CreateEquippedItemTextElements(Items, player)
     end
     
     local HealthTween = nil
     
     Data.HealthChanged = function(Value)
-        if EspLib.Settings.Healthbar.Enabled and Items.Healthbar then
+        if settings.Healthbar.Enabled and Items.Healthbar then
             local Multiplier = math.clamp(Value / 100, 0, 1)
-            local isHorizontal = EspLib.Settings.Healthbar.Position == "Top" or EspLib.Settings.Healthbar.Position == "Bottom"
+            local isHorizontal = settings.Healthbar.Position == "Top" or settings.Healthbar.Position == "Bottom"
             
             local targetSize
             local targetPosition
@@ -1086,18 +1186,18 @@ function EspLib._internal.CreateObject(player)
                 targetPosition = dim2(0, 1, 0, 1)
             end
             
-            if EspLib.Settings.Healthbar.Tween and TweenService then
+            if settings.Healthbar.Tween and self.TweenService then
                 if HealthTween and HealthTween.Cancel then
                     HealthTween:Cancel()
                 end
                 
                 local tweenInfo = TweenInfo.new(
-                    EspLib.Settings.Healthbar.TweenSpeed,
-                    Enum.EasingStyle[EspLib.Settings.Healthbar.EasingStyle],
-                    Enum.EasingDirection[EspLib.Settings.Healthbar.EasingDirection]
+                    settings.Healthbar.TweenSpeed,
+                    Enum.EasingStyle[settings.Healthbar.EasingStyle],
+                    Enum.EasingDirection[settings.Healthbar.EasingDirection]
                 )
                 
-                HealthTween = TweenService:Create(Items.HealthbarFade, tweenInfo, {
+                HealthTween = self.TweenService:Create(Items.HealthbarFade, tweenInfo, {
                     Size = targetSize,
                     Position = targetPosition
                 })
@@ -1108,26 +1208,26 @@ function EspLib._internal.CreateObject(player)
             end
         end
         
-        if EspLib.Settings.HealthText.Enabled and Items.HealthText then
+        if settings.HealthText.Enabled and Items.HealthText then
             Items.HealthText.Text = tostring(math.round(Value))
         end
     end
     
     Data.UpdateVelocity = function()
-        if EspLib.Settings.VelocityText.Enabled and Items.VelocityText then
-            local avgVel = EspLib._internal.GetAverageVelocity(player)
+        if settings.VelocityText.Enabled and Items.VelocityText then
+            local avgVel = self:_GetAverageVelocity(player)
             Items.VelocityText.Text = math.round(avgVel)
         end
     end
     
     Data.UpdateEquippedItem = function()
-        if EspLib.Settings.EquippedItemText.Enabled and Items.EquippedItem then
-            if EspLib._internal.ShouldHideForTeam(player) then
+        if settings.EquippedItemText.Enabled and Items.EquippedItem then
+            if self:_ShouldHideForTeam(player) then
                 Items.EquippedItem.Text = ""
                 return
             end
             
-            local item = EspLib._internal.GetEquippedItem(player)
+            local item = self:_GetEquippedItem(player)
             if item and item ~= "" then
                 Items.EquippedItem.Text = item
             else
@@ -1137,20 +1237,21 @@ function EspLib._internal.CreateObject(player)
     end
     
     Data.RefreshChams = function()
-        if EspLib.Settings.Chams.Enabled and EspLib.Settings.Main.Enabled then
-            local Character = Data.Info.Character
-            if Character then
-                if not Data.Highlight then
-                    EspLib._internal.CreateChamsElements(Data)
-                else
-                    Data.Highlight.Adornee = Character
-                    Data.Highlight.Enabled = true
-                end
-            end
-        else
+        if not settings.Chams.Enabled then
             if Data.Highlight then
                 Data.Highlight:Destroy()
                 Data.Highlight = nil
+            end
+            return
+        end
+        
+        local Character = Data.Info.Character
+        if Character then
+            if not Data.Highlight then
+                self:_CreateChamsElements(Data)
+            else
+                Data.Highlight.Adornee = Character
+                Data.Highlight.Enabled = true
             end
         end
     end
@@ -1169,24 +1270,24 @@ function EspLib._internal.CreateObject(player)
         Data.Info.Humanoid = Humanoid
         Data.Info.RootPart = Humanoid.RootPart
         
-        if EspLib.Settings.Healthbar.Enabled or EspLib.Settings.HealthText.Enabled then
+        if settings.Healthbar.Enabled or settings.HealthText.Enabled then
             local conn = Humanoid.HealthChanged:Connect(function(h)
                 Data.HealthChanged(h)
             end)
-            table.insert(EspLib._internal.EspConnections, conn)
+            table.insert(self._connections, conn)
             Data.HealthChanged(Humanoid.Health)
         end
         
-        if EspLib.Settings.EquippedItemText.Enabled then
+        if settings.EquippedItemText.Enabled then
             local attrConn = player:GetAttributeChangedSignal("EquippedItem"):Connect(function()
                 Data.UpdateEquippedItem()
             end)
-            table.insert(EspLib._internal.EspConnections, attrConn)
+            table.insert(self._connections, attrConn)
             
             local teamConn = player:GetPropertyChangedSignal("Team"):Connect(function()
                 Data.UpdateEquippedItem()
             end)
-            table.insert(EspLib._internal.EspConnections, teamConn)
+            table.insert(self._connections, teamConn)
             
             Data.UpdateEquippedItem()
         end
@@ -1201,8 +1302,8 @@ function EspLib._internal.CreateObject(player)
         if Data.Highlight then
             Data.Highlight:Destroy()
         end
-        EspLib._internal.VelocitySamples[player.Name] = nil
-        EspLib._internal.EspPlayers[player.Name] = nil
+        self._velocitySamples[player.Name] = nil
+        self._espPlayers[player.Name] = nil
     end
     
     Data.RefreshDescendants()
@@ -1210,28 +1311,33 @@ function EspLib._internal.CreateObject(player)
     local conn = player.CharacterAdded:Connect(function()
         Data.RefreshDescendants()
     end)
-    table.insert(EspLib._internal.EspConnections, conn)
+    table.insert(self._connections, conn)
     
-    EspLib._internal.EspPlayers[player.Name] = Data
+    self._espPlayers[player.Name] = Data
 end
 
-function EspLib._internal.Update()
-    if not EspLib.Settings.Main.Enabled then
-        for _, Data in pairs(EspLib._internal.EspPlayers) do
+function EspLibrary:_Update()
+    if not self._loaded then return end
+    
+    local settings = self._settings
+    
+    if not settings.Main.Enabled then
+        for _, Data in pairs(self._espPlayers) do
             if Data.Items and Data.Items.Holder then
                 Data.Items.Holder.Visible = false
             end
-            if Data.RefreshChams then
-                Data:RefreshChams()
+            -- Disable chams when main is disabled
+            if Data.Highlight then
+                Data.Highlight.Enabled = false
             end
         end
         return
     end
     
-    local hasAnyFeature = EspLib.Settings.Box.Enabled or EspLib.Settings.NameText.Enabled or EspLib.Settings.DistanceText.Enabled or EspLib.Settings.Healthbar.Enabled or EspLib.Settings.HealthText.Enabled or EspLib.Settings.VelocityText.Enabled or EspLib.Settings.EquippedItemText.Enabled
+    local hasAnyFeature = settings.Box.Enabled or settings.NameText.Enabled or settings.DistanceText.Enabled or settings.Healthbar.Enabled or settings.HealthText.Enabled or settings.VelocityText.Enabled or settings.EquippedItemText.Enabled
     
     if not hasAnyFeature then
-        for _, Data in pairs(EspLib._internal.EspPlayers) do
+        for _, Data in pairs(self._espPlayers) do
             if Data.Items and Data.Items.Holder then
                 Data.Items.Holder.Visible = false
             end
@@ -1239,39 +1345,46 @@ function EspLib._internal.Update()
         return
     end
     
-    if EspLib.Settings.VelocityText.Enabled then
-        for _, Data in pairs(EspLib._internal.EspPlayers) do
+    -- Update chams state for all players
+    for _, Data in pairs(self._espPlayers) do
+        if Data.Highlight then
+            Data.Highlight.Enabled = settings.Chams.Enabled
+        end
+    end
+    
+    if settings.VelocityText.Enabled then
+        for _, Data in pairs(self._espPlayers) do
             if Data.UpdateVelocity then
                 Data.UpdateVelocity()
             end
         end
     end
     
-    if EspLib.Settings.EquippedItemText.Enabled then
-        for _, Data in pairs(EspLib._internal.EspPlayers) do
+    if settings.EquippedItemText.Enabled then
+        for _, Data in pairs(self._espPlayers) do
             if Data.UpdateEquippedItem then
                 Data.UpdateEquippedItem()
             end
         end
     end
     
-    local needsPositionCalc = EspLib.Settings.Box.Enabled or EspLib.Settings.DistanceText.Enabled
+    local needsPositionCalc = settings.Box.Enabled or settings.DistanceText.Enabled
     
-    for _, Data in pairs(EspLib._internal.EspPlayers) do
+    for _, Data in pairs(self._espPlayers) do
         if Data.Info and Data.Info.Character and Data.Info.Humanoid and Data.Info.Humanoid.RootPart then
             local Items = Data.Items
             local Holder = Items.Holder
             
             if Holder then
                 if needsPositionCalc then
-                    local BoxSize, BoxPos, OnScreen, Distance = EspLib._internal.BoxSolve(Data.Info.Humanoid.RootPart)
+                    local BoxSize, BoxPos, OnScreen, Distance = self:_BoxSolve(Data.Info.Humanoid.RootPart)
                     
-                    if Distance and Distance <= EspLib.Settings.Main.RenderDistance and OnScreen then
+                    if Distance and Distance <= settings.Main.RenderDistance and OnScreen then
                         Holder.Visible = true
                         Holder.Position = dim_offset(BoxPos.X, BoxPos.Y)
                         Holder.Size = dim2(0, BoxSize.X, 0, BoxSize.Y)
                         
-                        if EspLib.Settings.DistanceText.Enabled and Items.Distance then
+                        if settings.DistanceText.Enabled and Items.Distance then
                             Items.Distance.Text = tostring(math.round(Distance)) .. "m"
                         end
                     else
@@ -1283,113 +1396,42 @@ function EspLib._internal.Update()
             end
         end
     end
-    
-    -- Refresh chams for all players
-    for _, Data in pairs(EspLib._internal.EspPlayers) do
-        if Data.RefreshChams then
-            Data:RefreshChams()
-        end
-    end
 end
 
--- Public API
-function EspLib:Initialize()
-    if self._internal.Initialized then
-        return
-    end
+function EspLibrary:_Initialize()
+    self:_UpdateSettings()
     
-    local Players = cloneref(game:GetService("Players"))
-    local RunService = cloneref(game:GetService("RunService"))
-    local Camera = cloneref(workspace.CurrentCamera)
-    local TweenService = cloneref(game:GetService("TweenService"))
-    local CoreGui = cloneref(game:GetService("CoreGui"))
-    local HttpService = cloneref(game:GetService("HttpService"))
-    
-    self._internal.ScreenGui = Instance.new("ScreenGui")
-    self._internal.ScreenGui.Name = "EspObject"
-    self._internal.ScreenGui.IgnoreGuiInset = true
-    self._internal.ScreenGui.ResetOnSpawn = false
-    self._internal.ScreenGui.Parent = CoreGui
-    
-    self._internal.Cache = Instance.new("ScreenGui")
-    self._internal.Cache.Name = "EspCache"
-    self._internal.Cache.Enabled = false
-    self._internal.Cache.ResetOnSpawn = false
-    self._internal.Cache.Parent = CoreGui
-    
-    for _, player in pairs(Players:GetPlayers()) do
-        if self.Settings.Main.IncludeLocalPlayer then
-            self._internal.CreateObject(player)
+    for _, player in pairs(self.PlayersService:GetPlayers()) do
+        if self._settings.Main.IncludeLocalPlayer then
+            self:_CreateObject(player)
         else
-            if player ~= Players.LocalPlayer then
-                self._internal.CreateObject(player)
+            if player ~= self.PlayersService.LocalPlayer then
+                self:_CreateObject(player)
             end
         end
     end
-
-    local playerAddedConn = Players.PlayerAdded:Connect(function(player)
-        if self.Settings.Main.IncludeLocalPlayer then
-            self._internal.CreateObject(player)
-        else
-            if player ~= Players.LocalPlayer then
-                self._internal.CreateObject(player)
-            end
-        end
-    end)
-    table.insert(self._internal.EspConnections, playerAddedConn)
-
-    local playerRemovingConn = Players.PlayerRemoving:Connect(function(player)
-        if self._internal.EspPlayers[player.Name] then
-            self._internal.EspPlayers[player.Name].Destroy()
-        end
-    end)
-    table.insert(self._internal.EspConnections, playerRemovingConn)
-
-    self._internal.LoopConnection = RunService:BindToRenderStep("Run Loop", Enum.RenderPriority.Camera.Value + 1, function()
-        self._internal.Update()
-    end)
     
-    self._internal.Initialized = true
-end
-
-function EspLib:Unload()
-    for _, conn in pairs(self._internal.EspConnections) do
-        conn:Disconnect()
-    end
-    if self._internal.LoopConnection then
-        local RunService = cloneref(game:GetService("RunService"))
-        RunService:UnbindFromRenderStep("Run Loop")
-        self._internal.LoopConnection = nil
-    end
-    for _, data in pairs(self._internal.EspPlayers) do
-        if data.Destroy then
-            data.Destroy()
-        end
-    end
-    if self._internal.ScreenGui then
-        self._internal.ScreenGui:Destroy()
-    end
-    if self._internal.Cache then
-        self._internal.Cache:Destroy()
-    end
-    self._internal.Initialized = false
-end
-
-function EspLib:UpdateSettings(newSettings)
-    for category, settings in pairs(newSettings) do
-        if self.Settings[category] then
-            for key, value in pairs(settings) do
-                if type(value) == "table" and type(self.Settings[category][key]) == "table" then
-                    for subKey, subValue in pairs(value) do
-                        self.Settings[category][key][subKey] = subValue
-                    end
-                else
-                    self.Settings[category][key] = value
-                end
+    local playerAddedConn = self.PlayersService.PlayerAdded:Connect(function(player)
+        if self._settings.Main.IncludeLocalPlayer then
+            self:_CreateObject(player)
+        else
+            if player ~= self.PlayersService.LocalPlayer then
+                self:_CreateObject(player)
             end
         end
-    end
+    end)
+    table.insert(self._connections, playerAddedConn)
+    
+    local playerRemovingConn = self.PlayersService.PlayerRemoving:Connect(function(player)
+        if self._espPlayers[player.Name] then
+            self._espPlayers[player.Name]:Destroy()
+        end
+    end)
+    table.insert(self._connections, playerRemovingConn)
+    
+    self._loopConnection = self.RunService:BindToRenderStep("Run Loop", Enum.RenderPriority.Camera.Value + 1, function()
+        self:_Update()
+    end)
 end
 
--- Return the library
-return EspLib
+return EspLibrary
