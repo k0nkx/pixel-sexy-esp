@@ -69,7 +69,8 @@ local Settings = {
     Main = {
         Enabled = true,
         RenderDistance = 10000,
-        IncludeLocalPlayer = true, -- Set to true to apply ESP to local player
+        IncludeLocalPlayer = true,
+        UseTeamColor = true,
     },
     
     Chams = {
@@ -124,6 +125,43 @@ local Settings = {
         }
     },
     
+    HealthText = {
+        Enabled = true,
+        Color = { Color = rgb(255, 255, 255) },
+        Position = "Left",
+        Size = 11,
+        Font = Enum.Font.SourceSans,
+        UseCustomFont = true,
+        CustomFontName = "Tahoma",
+        GradientEnabled = false,
+        Gradient = {
+            ColorSequence = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, rgb(255, 255, 255)),
+                ColorSequenceKeypoint.new(1, rgb(235, 130, 255))
+            }),
+            Rotation = 90,
+        }
+    },
+    
+    VelocityText = {
+        Enabled = true,
+        Color = { Color = rgb(255, 255, 255) },
+        Position = "Right",
+        Size = 11,
+        Font = Enum.Font.SourceSans,
+        UseCustomFont = true,
+        CustomFontName = "Tahoma",
+        AverageSamples = 10,
+        GradientEnabled = false,
+        Gradient = {
+            ColorSequence = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, rgb(255, 255, 255)),
+                ColorSequenceKeypoint.new(1, rgb(235, 130, 255))
+            }),
+            Rotation = 90,
+        }
+    },
+    
     NameText = {
         Enabled = true,
         Color = { Color = rgb(255, 255, 255) },
@@ -132,6 +170,14 @@ local Settings = {
         Font = Enum.Font.SourceSans,
         UseCustomFont = true,
         CustomFontName = "Tahoma",
+        GradientEnabled = false,
+        Gradient = {
+            ColorSequence = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, rgb(255, 255, 255)),
+                ColorSequenceKeypoint.new(1, rgb(235, 130, 255))
+            }),
+            Rotation = 90,
+        }
     },
     
     DistanceText = {
@@ -142,6 +188,14 @@ local Settings = {
         Font = Enum.Font.SourceSans,
         UseCustomFont = true,
         CustomFontName = "Tahoma",
+        GradientEnabled = false,
+        Gradient = {
+            ColorSequence = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, rgb(255, 255, 255)),
+                ColorSequenceKeypoint.new(1, rgb(235, 130, 255))
+            }),
+            Rotation = 90,
+        }
     },
 }
 
@@ -161,6 +215,7 @@ local EspPlayers = {}
 local EspConnections = {}
 local LoopConnection = nil
 local LoadedCustomFonts = {}
+local VelocitySamples = {}
 
 local function Create(instance, options)
     local Ins = Instance.new(instance)
@@ -245,6 +300,17 @@ local function ApplyFontToText(textLabel, settings)
     end
 end
 
+local function ApplyTextGradient(textLabel, settings)
+    if settings.GradientEnabled then
+        local gradient = Instance.new("UIGradient")
+        gradient.Color = settings.Gradient.ColorSequence
+        gradient.Rotation = settings.Gradient.Rotation
+        gradient.Parent = textLabel
+        return gradient
+    end
+    return nil
+end
+
 local function ConvertScreenPoint(world_position)
     local ViewportSize = Camera.ViewportSize
     local LocalPos = Camera.CFrame:PointToObjectSpace(world_position)
@@ -284,7 +350,62 @@ local function BoxSolve(rootPart)
     return BoxSize, BoxPosition, TopIsRendered, Distance
 end
 
+local function GetTeamColor(player)
+    if not Settings.Main.UseTeamColor then
+        return nil
+    end
+    
+    local team = player.Team
+    if team and team.TeamColor then
+        return team.TeamColor.Color
+    end
+    return nil
+end
+
+local function GetVelocity(player)
+    if not player or not player.Character then
+        return 0
+    end
+    
+    local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then
+        return 0
+    end
+    
+    local velocity = rootPart.AssemblyLinearVelocity
+    if not velocity then
+        return 0
+    end
+    
+    return velocity.Magnitude
+end
+
+local function GetAverageVelocity(player)
+    if not VelocitySamples[player.Name] then
+        VelocitySamples[player.Name] = {}
+    end
+    
+    local samples = VelocitySamples[player.Name]
+    local currentVel = GetVelocity(player)
+    
+    table.insert(samples, currentVel)
+    
+    local maxSamples = Settings.VelocityText.AverageSamples or 10
+    if #samples > maxSamples then
+        table.remove(samples, 1)
+    end
+    
+    local sum = 0
+    for _, v in pairs(samples) do
+        sum = sum + v
+    end
+    
+    return sum / #samples
+end
+
 local function CreateBoxElements(Items, player)
+    local teamColor = GetTeamColor(player)
+    
     Items.Box = Create("Frame", {
         Parent = Cache,
         Name = "",
@@ -313,7 +434,7 @@ local function CreateBoxElements(Items, player)
     })
     
     Items.UIStroke = Create("UIStroke", {
-        Color = rgb(255, 255, 255),
+        Color = teamColor or rgb(255, 255, 255),
         LineJoinMode = Enum.LineJoinMode.Miter,
         Parent = Items.Inner
     })
@@ -324,6 +445,11 @@ local function CreateBoxElements(Items, player)
         Enabled = Settings.Box.GradientEnabled,
         Rotation = Settings.Box.Gradient.Rotation
     })
+    
+    if teamColor then
+        Items.UIStroke.Color = teamColor
+        Items.BoxGradient.Enabled = false
+    end
     
     Items.Inner2 = Create("Frame", {
         Parent = Items.Inner,
@@ -367,7 +493,10 @@ local function CreateBoxElements(Items, player)
         SliceCenter = rect(vec2(1, 1), vec2(99, 2))
     })
     
-    Create("UIGradient", { Parent = Items.BottomLeftX })
+    local gradient = Create("UIGradient", { Parent = Items.BottomLeftX })
+    if teamColor then
+        gradient.Color = ColorSequence.new(teamColor)
+    end
     
     Items.BottomLeftY = Create("ImageLabel", {
         ScaleType = Enum.ScaleType.Slice,
@@ -385,7 +514,10 @@ local function CreateBoxElements(Items, player)
         SliceCenter = rect(vec2(1, 0), vec2(2, 96))
     })
     
-    Create("UIGradient", { Rotation = -90, Parent = Items.BottomLeftY })
+    gradient = Create("UIGradient", { Rotation = -90, Parent = Items.BottomLeftY })
+    if teamColor then
+        gradient.Color = ColorSequence.new(teamColor)
+    end
     
     Items.BottomRightX = Create("ImageLabel", {
         ScaleType = Enum.ScaleType.Slice,
@@ -403,7 +535,10 @@ local function CreateBoxElements(Items, player)
         SliceCenter = rect(vec2(1, 1), vec2(99, 2))
     })
     
-    Create("UIGradient", { Parent = Items.BottomRightX })
+    gradient = Create("UIGradient", { Parent = Items.BottomRightX })
+    if teamColor then
+        gradient.Color = ColorSequence.new(teamColor)
+    end
     
     Items.BottomRightY = Create("ImageLabel", {
         ScaleType = Enum.ScaleType.Slice,
@@ -421,7 +556,10 @@ local function CreateBoxElements(Items, player)
         SliceCenter = rect(vec2(1, 0), vec2(2, 96))
     })
     
-    Create("UIGradient", { Rotation = 90, Parent = Items.BottomRightY })
+    gradient = Create("UIGradient", { Rotation = 90, Parent = Items.BottomRightY })
+    if teamColor then
+        gradient.Color = ColorSequence.new(teamColor)
+    end
     
     Items.TopLeftY = Create("ImageLabel", {
         ScaleType = Enum.ScaleType.Slice,
@@ -438,7 +576,10 @@ local function CreateBoxElements(Items, player)
         SliceCenter = rect(vec2(1, 0), vec2(2, 98))
     })
     
-    Create("UIGradient", { Rotation = 90, Parent = Items.TopLeftY })
+    gradient = Create("UIGradient", { Rotation = 90, Parent = Items.TopLeftY })
+    if teamColor then
+        gradient.Color = ColorSequence.new(teamColor)
+    end
     
     Items.TopRightY = Create("ImageLabel", {
         ScaleType = Enum.ScaleType.Slice,
@@ -456,7 +597,10 @@ local function CreateBoxElements(Items, player)
         SliceCenter = rect(vec2(1, 0), vec2(2, 98))
     })
     
-    Create("UIGradient", { Rotation = -90, Parent = Items.TopRightY })
+    gradient = Create("UIGradient", { Rotation = -90, Parent = Items.TopRightY })
+    if teamColor then
+        gradient.Color = ColorSequence.new(teamColor)
+    end
     
     Items.TopRightX = Create("ImageLabel", {
         ScaleType = Enum.ScaleType.Slice,
@@ -474,7 +618,10 @@ local function CreateBoxElements(Items, player)
         SliceCenter = rect(vec2(1, 1), vec2(99, 2))
     })
     
-    Create("UIGradient", { Parent = Items.TopRightX })
+    gradient = Create("UIGradient", { Parent = Items.TopRightX })
+    if teamColor then
+        gradient.Color = ColorSequence.new(teamColor)
+    end
     
     Items.TopLeftX = Create("ImageLabel", {
         ScaleType = Enum.ScaleType.Slice,
@@ -490,7 +637,10 @@ local function CreateBoxElements(Items, player)
         SliceCenter = rect(vec2(1, 1), vec2(99, 2))
     })
     
-    Create("UIGradient", { Parent = Items.TopLeftX })
+    gradient = Create("UIGradient", { Parent = Items.TopLeftX })
+    if teamColor then
+        gradient.Color = ColorSequence.new(teamColor)
+    end
     
     if Settings.Box.Type == "Corner" then
         Items.Corners.Parent = Items.Holder
@@ -511,10 +661,27 @@ local function CreateBoxElements(Items, player)
         Items.Holder.BackgroundTransparency = 1
         Items.HolderGradient.Enabled = false
     end
+    
+    if Settings.Main.UseTeamColor then
+        local teamConn = player:GetPropertyChangedSignal("Team"):Connect(function()
+            local newColor = GetTeamColor(player)
+            if newColor and Items.UIStroke then
+                Items.UIStroke.Color = newColor
+                for _, child in pairs(Items.Corners:GetChildren()) do
+                    if child:IsA("ImageLabel") then
+                        local grad = child:FindFirstChild("UIGradient")
+                        if grad then
+                            grad.Color = ColorSequence.new(newColor)
+                        end
+                    end
+                end
+            end
+        end)
+        table.insert(EspConnections, teamConn)
+    end
 end
 
 local function CreateHealthbarElements(Items)
-    -- Background (black outline) with clipping to prevent bleed
     Items.Healthbar = Create("Frame", {
         Name = Settings.Healthbar.Position,
         Parent = Cache,
@@ -523,10 +690,9 @@ local function CreateHealthbarElements(Items)
         BorderSizePixel = 0,
         BackgroundColor3 = rgb(0, 0, 0),
         ZIndex = 1,
-        ClipsDescendants = true  -- Prevents fade/accent from bleeding outside the bar
+        ClipsDescendants = true
     })
     
-    -- The actual health bar (colored/gradient) - behind the fade
     Items.HealthbarAccent = Create("Frame", {
         Parent = Items.Healthbar,
         Name = "",
@@ -535,10 +701,9 @@ local function CreateHealthbarElements(Items)
         Size = dim2(1, -2, 1, -2),
         BorderSizePixel = 0,
         BackgroundColor3 = rgb(255, 255, 255),
-        ZIndex = 1  -- Behind the fade
+        ZIndex = 1
     })
     
-    -- The black fade that covers lost health - ON TOP
     Items.HealthbarFade = Create("Frame", {
         Parent = Items.Healthbar,
         Name = "",
@@ -547,7 +712,7 @@ local function CreateHealthbarElements(Items)
         Size = dim2(1, -2, 1, -2),
         BorderSizePixel = 0,
         BackgroundColor3 = rgb(0, 0, 0),
-        ZIndex = 2  -- ON TOP, masks lost health
+        ZIndex = 2
     })
     
     Items.HealthbarGradient = Create("UIGradient", {
@@ -561,30 +726,66 @@ local function CreateHealthbarElements(Items)
     Items.Healthbar.Visible = true
 end
 
-local function CreateNameTextElements(Items, player)
-    Items.Text = Create("TextLabel", {
-        TextColor3 = Settings.NameText.Color.Color,
+local function CreateTextLabel(textSettings, defaultText, player)
+    local label = Create("TextLabel", {
+        TextColor3 = textSettings.Color.Color,
         BorderColor3 = rgb(0, 0, 0),
         Parent = Cache,
-        Name = Settings.NameText.Position,
-        Text = player.Name,
+        Name = textSettings.Position,
+        Text = defaultText,
         BackgroundTransparency = 1,
         Size = dim2(1, 0, 0, 0),
         BorderSizePixel = 0,
         AutomaticSize = Enum.AutomaticSize.XY,
-        TextSize = Settings.NameText.Size,
+        TextSize = textSettings.Size,
         BackgroundColor3 = rgb(255, 255, 255),
         ZIndex = 2
     })
     
-    ApplyFontToText(Items.Text, Settings.NameText)
+    ApplyFontToText(label, textSettings)
     
-    Create("UIStroke", {
-        Parent = Items.Text,
+    local stroke = Create("UIStroke", {
+        Parent = label,
         LineJoinMode = Enum.LineJoinMode.Miter,
         ZIndex = 1
     })
     
+    if textSettings.GradientEnabled then
+        local gradient = Instance.new("UIGradient")
+        gradient.Color = textSettings.Gradient.ColorSequence
+        gradient.Rotation = textSettings.Gradient.Rotation
+        gradient.Parent = label
+    end
+    
+    return label
+end
+
+local function CreateHealthTextElements(Items, player)
+    Items.HealthText = CreateTextLabel(Settings.HealthText, "100", player)
+    Items.HealthText.Parent = Items[Settings.HealthText.Position .. "Texts"]
+    if Settings.HealthText.Position == "Top" or Settings.HealthText.Position == "Bottom" then
+        Items.HealthText.AutomaticSize = Enum.AutomaticSize.Y
+        Items.HealthText.TextXAlignment = Enum.TextXAlignment.Center
+    else
+        Items.HealthText.AutomaticSize = Enum.AutomaticSize.XY
+        Items.HealthText.TextXAlignment = Settings.HealthText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
+    end
+end
+
+local function CreateVelocityTextElements(Items, player)
+    Items.VelocityText = CreateTextLabel(Settings.VelocityText, "0", player)
+    Items.VelocityText.Parent = Items[Settings.VelocityText.Position .. "Texts"]
+    if Settings.VelocityText.Position == "Top" or Settings.VelocityText.Position == "Bottom" then
+        Items.VelocityText.AutomaticSize = Enum.AutomaticSize.Y
+        Items.VelocityText.TextXAlignment = Enum.TextXAlignment.Center
+    else
+        Items.VelocityText.AutomaticSize = Enum.AutomaticSize.XY
+        Items.VelocityText.TextXAlignment = Settings.VelocityText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
+    end
+end
+
+local function CreateNameTextElements(Items, player)
+    Items.Text = CreateTextLabel(Settings.NameText, player.Name, player)
     Items.Text.Parent = Items[Settings.NameText.Position .. "Texts"]
     if Settings.NameText.Position == "Top" or Settings.NameText.Position == "Bottom" then
         Items.Text.AutomaticSize = Enum.AutomaticSize.Y
@@ -596,28 +797,7 @@ local function CreateNameTextElements(Items, player)
 end
 
 local function CreateDistanceTextElements(Items)
-    Items.Distance = Create("TextLabel", {
-        TextColor3 = Settings.DistanceText.Color.Color,
-        BorderColor3 = rgb(0, 0, 0),
-        Parent = Cache,
-        Name = Settings.DistanceText.Position,
-        BackgroundTransparency = 1,
-        Size = dim2(1, 0, 0, 0),
-        BorderSizePixel = 0,
-        AutomaticSize = Enum.AutomaticSize.XY,
-        TextSize = Settings.DistanceText.Size,
-        BackgroundColor3 = rgb(255, 255, 255),
-        ZIndex = 2
-    })
-    
-    ApplyFontToText(Items.Distance, Settings.DistanceText)
-    
-    Create("UIStroke", {
-        Parent = Items.Distance,
-        LineJoinMode = Enum.LineJoinMode.Miter,
-        ZIndex = 1
-    })
-    
+    Items.Distance = CreateTextLabel(Settings.DistanceText, "0m", nil)
     Items.Distance.Parent = Items[Settings.DistanceText.Position .. "Texts"]
     if Settings.DistanceText.Position == "Top" or Settings.DistanceText.Position == "Bottom" then
         Items.Distance.AutomaticSize = Enum.AutomaticSize.Y
@@ -649,6 +829,8 @@ local function CreateObject(player)
     
     local Items = Data.Items
     
+    VelocitySamples[player.Name] = {}
+    
     Items.Holder = Create("Frame", {
         Parent = ScreenGui,
         Visible = false,
@@ -673,7 +855,6 @@ local function CreateObject(player)
         Enabled = false
     })
     
-    -- Create container frames (always needed for text positioning)
     Items.Left = Create("Frame", {
         Parent = Items.Holder,
         Size = dim2(0, 0, 1, 0),
@@ -824,13 +1005,20 @@ local function CreateObject(player)
         SortOrder = Enum.SortOrder.LayoutOrder
     })
     
-    -- Conditionally create elements based on settings
     if Settings.Box.Enabled then
         CreateBoxElements(Items, player)
     end
     
     if Settings.Healthbar.Enabled then
         CreateHealthbarElements(Items)
+    end
+    
+    if Settings.HealthText.Enabled then
+        CreateHealthTextElements(Items, player)
+    end
+    
+    if Settings.VelocityText.Enabled then
+        CreateVelocityTextElements(Items, player)
     end
     
     if Settings.NameText.Enabled then
@@ -841,53 +1029,57 @@ local function CreateObject(player)
         CreateDistanceTextElements(Items)
     end
     
-    -- Setup character tracking (always needed)
     local HealthTween = nil
     
     Data.HealthChanged = function(Value)
-        if not Settings.Healthbar.Enabled or not Items.Healthbar then
-            return
-        end
-        
-        local Multiplier = math.clamp(Value / 100, 0, 1)
-        local isHorizontal = Settings.Healthbar.Position == "Top" or Settings.Healthbar.Position == "Bottom"
-        
-        local targetSize
-        local targetPosition
-        
-        if isHorizontal then
-            -- Horizontal healthbar (Top or Bottom)
-            -- Fade grows from left to right, remaining health stays at left
-            local widthMult = 1 - Multiplier
-            targetSize = dim2(widthMult, -2 * widthMult, 1, -2)
-            targetPosition = dim2(Multiplier, 1, 0, 1)
-        else
-            -- Vertical healthbar (Left or Right)
-            -- Fade grows from top downward, remaining health stays at bottom
-            local heightMult = 1 - Multiplier
-            targetSize = dim2(1, -2, heightMult, -2 * heightMult)
-            targetPosition = dim2(0, 1, 0, 1)  -- Always anchored at top
-        end
-        
-        if Settings.Healthbar.Tween and TweenService then
-            if HealthTween and HealthTween.Cancel then
-                HealthTween:Cancel()
+        if Settings.Healthbar.Enabled and Items.Healthbar then
+            local Multiplier = math.clamp(Value / 100, 0, 1)
+            local isHorizontal = Settings.Healthbar.Position == "Top" or Settings.Healthbar.Position == "Bottom"
+            
+            local targetSize
+            local targetPosition
+            
+            if isHorizontal then
+                local widthMult = 1 - Multiplier
+                targetSize = dim2(widthMult, -2 * widthMult, 1, -2)
+                targetPosition = dim2(Multiplier, 1, 0, 1)
+            else
+                local heightMult = 1 - Multiplier
+                targetSize = dim2(1, -2, heightMult, -2 * heightMult)
+                targetPosition = dim2(0, 1, 0, 1)
             end
             
-            local tweenInfo = TweenInfo.new(
-                Settings.Healthbar.TweenSpeed,
-                Enum.EasingStyle[Settings.Healthbar.EasingStyle],
-                Enum.EasingDirection[Settings.Healthbar.EasingDirection]
-            )
-            
-            HealthTween = TweenService:Create(Items.HealthbarFade, tweenInfo, {
-                Size = targetSize,
-                Position = targetPosition
-            })
-            HealthTween:Play()
-        else
-            Items.HealthbarFade.Size = targetSize
-            Items.HealthbarFade.Position = targetPosition
+            if Settings.Healthbar.Tween and TweenService then
+                if HealthTween and HealthTween.Cancel then
+                    HealthTween:Cancel()
+                end
+                
+                local tweenInfo = TweenInfo.new(
+                    Settings.Healthbar.TweenSpeed,
+                    Enum.EasingStyle[Settings.Healthbar.EasingStyle],
+                    Enum.EasingDirection[Settings.Healthbar.EasingDirection]
+                )
+                
+                HealthTween = TweenService:Create(Items.HealthbarFade, tweenInfo, {
+                    Size = targetSize,
+                    Position = targetPosition
+                })
+                HealthTween:Play()
+            else
+                Items.HealthbarFade.Size = targetSize
+                Items.HealthbarFade.Position = targetPosition
+            end
+        end
+        
+        if Settings.HealthText.Enabled and Items.HealthText then
+            Items.HealthText.Text = tostring(math.round(Value))
+        end
+    end
+    
+    Data.UpdateVelocity = function()
+        if Settings.VelocityText.Enabled and Items.VelocityText then
+            local avgVel = GetAverageVelocity(player)
+            Items.VelocityText.Text = math.round(avgVel)
         end
     end
     
@@ -925,7 +1117,7 @@ local function CreateObject(player)
         Data.Info.Humanoid = Humanoid
         Data.Info.RootPart = Humanoid.RootPart
         
-        if Settings.Healthbar.Enabled then
+        if Settings.Healthbar.Enabled or Settings.HealthText.Enabled then
             local conn = Humanoid.HealthChanged:Connect(function(h)
                 Data.HealthChanged(h)
             end)
@@ -943,6 +1135,7 @@ local function CreateObject(player)
         if Data.Highlight then
             Data.Highlight:Destroy()
         end
+        VelocitySamples[player.Name] = nil
         EspPlayers[player.Name] = nil
     end
     
@@ -957,9 +1150,7 @@ local function CreateObject(player)
 end
 
 local function Update()
-    -- Early exit if main ESP is disabled
     if not Settings.Main.Enabled then
-        -- Hide all holders
         for _, Data in pairs(EspPlayers) do
             if Data.Items and Data.Items.Holder then
                 Data.Items.Holder.Visible = false
@@ -968,11 +1159,9 @@ local function Update()
         return
     end
     
-    -- Check if any visual features are enabled
-    local hasAnyFeature = Settings.Box.Enabled or Settings.NameText.Enabled or Settings.DistanceText.Enabled or Settings.Healthbar.Enabled
+    local hasAnyFeature = Settings.Box.Enabled or Settings.NameText.Enabled or Settings.DistanceText.Enabled or Settings.Healthbar.Enabled or Settings.HealthText.Enabled or Settings.VelocityText.Enabled
     
     if not hasAnyFeature then
-        -- Hide all holders and skip calculations
         for _, Data in pairs(EspPlayers) do
             if Data.Items and Data.Items.Holder then
                 Data.Items.Holder.Visible = false
@@ -981,7 +1170,14 @@ local function Update()
         return
     end
     
-    -- Only calculate positions if box or distance text is enabled (they need world position)
+    if Settings.VelocityText.Enabled then
+        for _, Data in pairs(EspPlayers) do
+            if Data.UpdateVelocity then
+                Data.UpdateVelocity()
+            end
+        end
+    end
+    
     local needsPositionCalc = Settings.Box.Enabled or Settings.DistanceText.Enabled
     
     for _, Data in pairs(EspPlayers) do
@@ -1005,7 +1201,6 @@ local function Update()
                         Holder.Visible = false
                     end
                 else
-                    -- Only healthbar or name text is enabled, still need to show holder but no position calculation needed
                     Holder.Visible = true
                 end
             end
@@ -1034,7 +1229,6 @@ local function Unload()
     end
 end
 
--- Only create players if at least one feature is enabled at startup
 local function Initialize()
     for _, player in pairs(Players:GetPlayers()) do
         if Settings.Main.IncludeLocalPlayer then
