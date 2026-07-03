@@ -1,180 +1,172 @@
 -- ESP Library
-local ESPLib = {}
-
--- Private variables
-local Players = cloneref(game:GetService("Players"))
-local RunService = cloneref(game:GetService("RunService"))
-local Camera = cloneref(workspace.CurrentCamera)
-local TweenService = cloneref(game:GetService("TweenService"))
-local CoreGui = cloneref(game:GetService("CoreGui"))
-local HttpService = cloneref(game:GetService("HttpService"))
-
-local ScreenGui = nil
-local Cache = nil
-local EspPlayers = {}
-local EspConnections = {}
-local LoopConnection = nil
-local LoadedCustomFonts = {}
-local VelocitySamples = {}
-local IsRunning = false
-local CurrentSettings = {}
-
--- Default settings
-local DefaultSettings = {
-    Main = {
-        Enabled = true,
-        RenderDistance = 10000,
-        IncludeLocalPlayer = true,
-        UseTeamColor = true,
-    },
-    
-    Chams = {
-        Enabled = true,
-        Fill = { Color = Color3.new(1, 1, 1), Transparency = 1 },
-        Outline = { Color = Color3.new(1, 1, 1), Transparency = 0.85 },
-    },
-    
-    Box = {
-        Enabled = true,
-        Type = "Box",
-        GradientEnabled = false,
-        Gradient = {
-            ColorSequence = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-                ColorSequenceKeypoint.new(1, Color3.new(0.922, 0.51, 1))
-            }),
-            Rotation = 90,
-            Transparency = NumberSequence.new(0.9)
+local EspLib = {
+    Settings = {
+        Main = {
+            Enabled = true,
+            RenderDistance = 10000,
+            IncludeLocalPlayer = true,
+            UseTeamColor = true,
         },
-        Fill = false,
-        FillGradientEnabled = true,
-        FillGradient = {
-            ColorSequence = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-                ColorSequenceKeypoint.new(1, Color3.new(0.922, 0.51, 1))
-            }),
-            Rotation = 90,
-            Transparency = NumberSequence.new({
-                NumberSequenceKeypoint.new(0, 0.9),
-                NumberSequenceKeypoint.new(1, 0.5)
-            })
+        
+        Chams = {
+            Enabled = true,
+            Fill = { Color = Color3.fromRGB(255, 255, 255), Transparency = 1 },
+            Outline = { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.85 },
+        },
+        
+        Box = {
+            Enabled = true,
+            Type = "Box",
+            GradientEnabled = false,
+            Gradient = {
+                ColorSequence = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 130, 255))
+                }),
+                Rotation = 90,
+                Transparency = NumberSequence.new(0.9)
+            },
+            Fill = false,
+            FillGradientEnabled = true,
+            FillGradient = {
+                ColorSequence = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 130, 255))
+                }),
+                Rotation = 90,
+                Transparency = NumberSequence.new({
+                    NumberSequenceKeypoint.new(0, 0.9),
+                    NumberSequenceKeypoint.new(1, 0.5)
+                })
+            },
+        },
+        
+        Healthbar = {
+            Enabled = true,
+            Position = "Left",
+            Thickness = 3,
+            Tween = true,
+            TweenSpeed = 0.3,
+            EasingStyle = "Quad",
+            EasingDirection = "Out",
+            GradientEnabled = true,
+            Gradient = {
+                ColorSequence = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(246, 199, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 130, 255))
+                }),
+                Rotation = 90,
+            }
+        },
+        
+        HealthText = {
+            Enabled = true,
+            Color = { Color = Color3.fromRGB(255, 255, 255) },
+            Position = "Left",
+            Size = 11,
+            Font = Enum.Font.SourceSans,
+            UseCustomFont = true,
+            CustomFontName = "Tahoma",
+            GradientEnabled = false,
+            Gradient = {
+                ColorSequence = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 130, 255))
+                }),
+                Rotation = 90,
+            }
+        },
+        
+        VelocityText = {
+            Enabled = true,
+            Color = { Color = Color3.fromRGB(255, 255, 255) },
+            Position = "Right",
+            Size = 11,
+            Font = Enum.Font.SourceSans,
+            UseCustomFont = true,
+            CustomFontName = "Tahoma",
+            AverageSamples = 10,
+            GradientEnabled = false,
+            Gradient = {
+                ColorSequence = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 130, 255))
+                }),
+                Rotation = 90,
+            }
+        },
+        
+        NameText = {
+            Enabled = true,
+            Color = { Color = Color3.fromRGB(255, 255, 255) },
+            Position = "Top",
+            Size = 12,
+            Font = Enum.Font.SourceSans,
+            UseCustomFont = true,
+            CustomFontName = "Tahoma",
+            GradientEnabled = false,
+            Gradient = {
+                ColorSequence = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 130, 255))
+                }),
+                Rotation = 90,
+            }
+        },
+        
+        DistanceText = {
+            Enabled = true,
+            Color = { Color = Color3.fromRGB(255, 255, 255) },
+            Position = "Bottom",
+            Size = 12,
+            Font = Enum.Font.SourceSans,
+            UseCustomFont = true,
+            CustomFontName = "Tahoma",
+            GradientEnabled = false,
+            Gradient = {
+                ColorSequence = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 130, 255))
+                }),
+                Rotation = 90,
+            }
+        },
+        
+        EquippedItemText = {
+            Enabled = true,
+            Color = { Color = Color3.fromRGB(255, 255, 255) },
+            Position = "Bottom",
+            Size = 11,
+            Font = Enum.Font.SourceSans,
+            UseCustomFont = true,
+            CustomFontName = "Tahoma",
+            GradientEnabled = false,
+            Gradient = {
+                ColorSequence = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 130, 255))
+                }),
+                Rotation = 90,
+            },
+            HideForTeamKiller = true,
+            KillerTeamName = "Killer",
         },
     },
     
-    Healthbar = {
-        Enabled = true,
-        Position = "Left",
-        Thickness = 3,
-        Tween = true,
-        TweenSpeed = 0.3,
-        EasingStyle = "Quad",
-        EasingDirection = "Out",
-        GradientEnabled = true,
-        Gradient = {
-            ColorSequence = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-                ColorSequenceKeypoint.new(0.5, Color3.new(0.965, 0.78, 1)),
-                ColorSequenceKeypoint.new(1, Color3.new(0.922, 0.51, 1))
-            }),
-            Rotation = 90,
-        }
-    },
-    
-    HealthText = {
-        Enabled = true,
-        Color = { Color = Color3.new(1, 1, 1) },
-        Position = "Left",
-        Size = 11,
-        Font = Enum.Font.SourceSans,
-        UseCustomFont = true,
-        CustomFontName = "Tahoma",
-        GradientEnabled = false,
-        Gradient = {
-            ColorSequence = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-                ColorSequenceKeypoint.new(1, Color3.new(0.922, 0.51, 1))
-            }),
-            Rotation = 90,
-        }
-    },
-    
-    VelocityText = {
-        Enabled = true,
-        Color = { Color = Color3.new(1, 1, 1) },
-        Position = "Right",
-        Size = 11,
-        Font = Enum.Font.SourceSans,
-        UseCustomFont = true,
-        CustomFontName = "Tahoma",
-        AverageSamples = 10,
-        GradientEnabled = false,
-        Gradient = {
-            ColorSequence = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-                ColorSequenceKeypoint.new(1, Color3.new(0.922, 0.51, 1))
-            }),
-            Rotation = 90,
-        }
-    },
-    
-    NameText = {
-        Enabled = true,
-        Color = { Color = Color3.new(1, 1, 1) },
-        Position = "Top",
-        Size = 12,
-        Font = Enum.Font.SourceSans,
-        UseCustomFont = true,
-        CustomFontName = "Tahoma",
-        GradientEnabled = false,
-        Gradient = {
-            ColorSequence = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-                ColorSequenceKeypoint.new(1, Color3.new(0.922, 0.51, 1))
-            }),
-            Rotation = 90,
-        }
-    },
-    
-    DistanceText = {
-        Enabled = true,
-        Color = { Color = Color3.new(1, 1, 1) },
-        Position = "Bottom",
-        Size = 12,
-        Font = Enum.Font.SourceSans,
-        UseCustomFont = true,
-        CustomFontName = "Tahoma",
-        GradientEnabled = false,
-        Gradient = {
-            ColorSequence = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-                ColorSequenceKeypoint.new(1, Color3.new(0.922, 0.51, 1))
-            }),
-            Rotation = 90,
-        }
-    },
-    
-    EquippedItemText = {
-        Enabled = true,
-        Color = { Color = Color3.new(1, 1, 1) },
-        Position = "Bottom",
-        Size = 11,
-        Font = Enum.Font.SourceSans,
-        UseCustomFont = true,
-        CustomFontName = "Tahoma",
-        GradientEnabled = false,
-        Gradient = {
-            ColorSequence = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-                ColorSequenceKeypoint.new(1, Color3.new(0.922, 0.51, 1))
-            }),
-            Rotation = 90,
-        },
-        HideForTeamKiller = true,
-        KillerTeamName = "Killer",
-    },
+    _internal = {
+        ScreenGui = nil,
+        Cache = nil,
+        EspPlayers = {},
+        EspConnections = {},
+        LoopConnection = nil,
+        LoadedCustomFonts = {},
+        VelocitySamples = {},
+        Initialized = false,
+    }
 }
 
--- Helper functions
+-- Internal helper functions
 local function rgb(r, g, b)
     return Color3.fromRGB(r, g, b)
 end
@@ -199,6 +191,37 @@ local function rect(min, max)
     return Rect.new(min, max)
 end
 
+local CustomFonts = {
+    Tahoma = { url = "https://github.com/k0nkx/UI-Lib-Tuff/raw/refs/heads/main/Windows-XP-Tahoma.ttf" },
+    Gotham = { url = "https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/Gotham/Regular/Gotham-Regular.ttf" },
+    Ubuntu = { url = "https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/Ubuntu/Regular/Ubuntu-Regular.ttf" },
+    Montserrat = { url = "https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/Montserrat/Regular/Montserrat-Regular.ttf" },
+    Inter = { url = "https://github.com/rsms/inter/raw/master/docs/font-files/Inter-Regular.otf" },
+    Poppins = { url = "https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-Regular.ttf" },
+    Roboto = { url = "https://github.com/google/fonts/raw/main/apache/roboto/static/Roboto-Regular.ttf" },
+    OpenSans = { url = "https://github.com/google/fonts/raw/main/ofl/opensans/OpenSans%5Bwdth,wght%5D.ttf" },
+    Kanit = { url = "https://github.com/google/fonts/raw/main/ofl/kanit/Kanit-Regular.ttf" },
+    JetBrainsMono = { url = "https://github.com/JetBrains/JetBrainsMono/raw/master/fonts/ttf/JetBrainsMono-Regular.ttf" },
+    FiraCode = { url = "https://github.com/tonsky/FiraCode/raw/master/distr/ttf/FiraCode-Regular.ttf" },
+    Inconsolata = { url = "https://github.com/google/fonts/raw/main/ofl/inconsolata/static/Inconsolata-Regular.ttf" },
+    SpaceMono = { url = "https://github.com/google/fonts/raw/main/ofl/spacemono/SpaceMono-Regular.ttf" },
+    Hack = { url = "https://github.com/source-foundry/Hack/raw/master/build/ttf/Hack-Regular.ttf" },
+    BebasNeue = { url = "https://github.com/google/fonts/raw/main/ofl/bebasneue/BebasNeue-Regular.ttf" },
+    Oswald = { url = "https://github.com/google/fonts/raw/main/ofl/oswald/static/Oswald-Regular.ttf" },
+    ArchivoBlack = { url = "https://github.com/google/fonts/raw/main/ofl/archivoblack/ArchivoBlack-Regular.ttf" },
+    Syne = { url = "https://github.com/google/fonts/raw/main/ofl/syne/Syne%5Bwght%5D.ttf" },
+    Outfit = { url = "https://github.com/google/fonts/raw/main/ofl/outfit/static/Outfit-Regular.ttf" },
+    PlayfairDisplay = { url = "https://github.com/google/fonts/raw/main/ofl/playfairdisplay/static/PlayfairDisplay-Regular.ttf" },
+    Lora = { url = "https://github.com/google/fonts/raw/main/ofl/lora/static/Lora-Regular.ttf" },
+    Merriweather = { url = "https://github.com/google/fonts/raw/main/ofl/merriweather/static/Merriweather-Regular.ttf" },
+    PTSerif = { url = "https://github.com/google/fonts/raw/main/ofl/ptserif/PTSerif-Regular.ttf" },
+    LibreBaskerville = { url = "https://github.com/google/fonts/raw/main/ofl/librebaskerville/LibreBaskerville-Regular.ttf" },
+    PressStart2P = { url = "https://github.com/google/fonts/raw/main/ofl/pressstart2p/PressStart2P-Regular.ttf" },
+    Silkscreen = { url = "https://github.com/google/fonts/raw/main/ofl/silkscreen/Silkscreen-Regular.ttf" },
+    PixelifySans = { url = "https://github.com/google/fonts/raw/main/ofl/pixelifysans/PixelifySans%5Bwght%5D.ttf" },
+    Lexend = { url = "https://github.com/google/fonts/raw/main/ofl/lexend/static/Lexend-Regular.ttf" }
+}
+
 local function Create(instance, options)
     local Ins = Instance.new(instance)
     for prop, value in pairs(options) do
@@ -207,209 +230,7 @@ local function Create(instance, options)
     return Ins
 end
 
--- Main library functions
-function ESPLib:GetSettings()
-    return CurrentSettings
-end
-
-function ESPLib:UpdateSettings(newSettings)
-    if not newSettings then return end
-    
-    local function deepMerge(target, source)
-        for key, value in pairs(source) do
-            if type(value) == "table" and type(target[key]) == "table" then
-                deepMerge(target[key], value)
-            else
-                target[key] = value
-            end
-        end
-    end
-    
-    local settingsCopy = {}
-    for key, value in pairs(DefaultSettings) do
-        settingsCopy[key] = value
-    end
-    
-    deepMerge(settingsCopy, newSettings)
-    CurrentSettings = settingsCopy
-    
-    if IsRunning then
-        ESPLib:Stop()
-        task.wait(0.1)
-        ESPLib:Start()
-    end
-end
-
-function ESPLib:Start()
-    if IsRunning then
-        ESPLib:Stop()
-    end
-    
-    IsRunning = true
-    ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "EspObject"
-    ScreenGui.IgnoreGuiInset = true
-    ScreenGui.ResetOnSpawn = false
-    ScreenGui.Parent = CoreGui
-    
-    Cache = Instance.new("ScreenGui")
-    Cache.Name = "EspCache"
-    Cache.Enabled = false
-    Cache.ResetOnSpawn = false
-    Cache.Parent = CoreGui
-    
-    Initialize()
-end
-
-function ESPLib:Stop()
-    IsRunning = false
-    Unload()
-end
-
-function ESPLib:Toggle(state)
-    if state ~= nil then
-        CurrentSettings.Main.Enabled = state
-    end
-    return CurrentSettings.Main.Enabled
-end
-
-function ESPLib:IsRunning()
-    return IsRunning
-end
-
-function ESPLib:ToggleBox(state)
-    if state ~= nil then
-        CurrentSettings.Box.Enabled = state
-    end
-    return CurrentSettings.Box.Enabled
-end
-
-function ESPLib:ToggleNameTag(state)
-    if state ~= nil then
-        CurrentSettings.NameText.Enabled = state
-    end
-    return CurrentSettings.NameText.Enabled
-end
-
-function ESPLib:ToggleHealthBar(state)
-    if state ~= nil then
-        CurrentSettings.Healthbar.Enabled = state
-    end
-    return CurrentSettings.Healthbar.Enabled
-end
-
-function ESPLib:ToggleHealthText(state)
-    if state ~= nil then
-        CurrentSettings.HealthText.Enabled = state
-    end
-    return CurrentSettings.HealthText.Enabled
-end
-
-function ESPLib:ToggleVelocityText(state)
-    if state ~= nil then
-        CurrentSettings.VelocityText.Enabled = state
-    end
-    return CurrentSettings.VelocityText.Enabled
-end
-
-function ESPLib:ToggleDistance(state)
-    if state ~= nil then
-        CurrentSettings.DistanceText.Enabled = state
-    end
-    return CurrentSettings.DistanceText.Enabled
-end
-
-function ESPLib:ToggleChams(state)
-    if state ~= nil then
-        CurrentSettings.Chams.Enabled = state
-    end
-    return CurrentSettings.Chams.Enabled
-end
-
-function ESPLib:ToggleHighlight(state)
-    if state ~= nil then
-        CurrentSettings.Chams.Enabled = state
-    end
-    return CurrentSettings.Chams.Enabled
-end
-
-function ESPLib:ToggleEquippedItem(state)
-    if state ~= nil then
-        CurrentSettings.EquippedItemText.Enabled = state
-    end
-    return CurrentSettings.EquippedItemText.Enabled
-end
-
-function ESPLib:SetBoxColor(color)
-    if not CurrentSettings.Box then return end
-    CurrentSettings.Box.Gradient.ColorSequence = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, color),
-        ColorSequenceKeypoint.new(1, color)
-    })
-end
-
-function ESPLib:SetBoxGradient(colors, rotation, spinSpeed)
-    if not CurrentSettings.Box then return end
-    CurrentSettings.Box.Gradient.ColorSequence = colors
-    if rotation ~= nil then
-        CurrentSettings.Box.Gradient.Rotation = rotation
-    end
-    if spinSpeed ~= nil then
-        CurrentSettings.Box.GradientSpinSpeed = spinSpeed
-    end
-end
-
-function ESPLib:SetNameTagColor(color)
-    if not CurrentSettings.NameText then return end
-    CurrentSettings.NameText.Color.Color = color
-end
-
-function ESPLib:SetBoxTransparency(transparency)
-    if not CurrentSettings.Box then return end
-    CurrentSettings.Box.Gradient.Transparency = NumberSequence.new(transparency)
-end
-
-function ESPLib:SetFilledTransparency(transparency)
-    if not CurrentSettings.Box then return end
-    CurrentSettings.Box.FillGradient.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, transparency),
-        NumberSequenceKeypoint.new(1, math.min(transparency + 0.1, 1))
-    })
-end
-
--- Private functions (moved from original)
-local function LoadCustomFont(fontName)
-    local CustomFonts = {
-        Tahoma = { url = "https://github.com/k0nkx/UI-Lib-Tuff/raw/refs/heads/main/Windows-XP-Tahoma.ttf" },
-        Gotham = { url = "https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/Gotham/Regular/Gotham-Regular.ttf" },
-        Ubuntu = { url = "https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/Ubuntu/Regular/Ubuntu-Regular.ttf" },
-        Montserrat = { url = "https://github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/Montserrat/Regular/Montserrat-Regular.ttf" },
-        Inter = { url = "https://github.com/rsms/inter/raw/master/docs/font-files/Inter-Regular.otf" },
-        Poppins = { url = "https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-Regular.ttf" },
-        Roboto = { url = "https://github.com/google/fonts/raw/main/apache/roboto/static/Roboto-Regular.ttf" },
-        OpenSans = { url = "https://github.com/google/fonts/raw/main/ofl/opensans/OpenSans%5Bwdth,wght%5D.ttf" },
-        Kanit = { url = "https://github.com/google/fonts/raw/main/ofl/kanit/Kanit-Regular.ttf" },
-        JetBrainsMono = { url = "https://github.com/JetBrains/JetBrainsMono/raw/master/fonts/ttf/JetBrainsMono-Regular.ttf" },
-        FiraCode = { url = "https://github.com/tonsky/FiraCode/raw/master/distr/ttf/FiraCode-Regular.ttf" },
-        Inconsolata = { url = "https://github.com/google/fonts/raw/main/ofl/inconsolata/static/Inconsolata-Regular.ttf" },
-        SpaceMono = { url = "https://github.com/google/fonts/raw/main/ofl/spacemono/SpaceMono-Regular.ttf" },
-        Hack = { url = "https://github.com/source-foundry/Hack/raw/master/build/ttf/Hack-Regular.ttf" },
-        BebasNeue = { url = "https://github.com/google/fonts/raw/main/ofl/bebasneue/BebasNeue-Regular.ttf" },
-        Oswald = { url = "https://github.com/google/fonts/raw/main/ofl/oswald/static/Oswald-Regular.ttf" },
-        ArchivoBlack = { url = "https://github.com/google/fonts/raw/main/ofl/archivoblack/ArchivoBlack-Regular.ttf" },
-        Syne = { url = "https://github.com/google/fonts/raw/main/ofl/syne/Syne%5Bwght%5D.ttf" },
-        Outfit = { url = "https://github.com/google/fonts/raw/main/ofl/outfit/static/Outfit-Regular.ttf" },
-        PlayfairDisplay = { url = "https://github.com/google/fonts/raw/main/ofl/playfairdisplay/static/PlayfairDisplay-Regular.ttf" },
-        Lora = { url = "https://github.com/google/fonts/raw/main/ofl/lora/static/Lora-Regular.ttf" },
-        Merriweather = { url = "https://github.com/google/fonts/raw/main/ofl/merriweather/static/Merriweather-Regular.ttf" },
-        PTSerif = { url = "https://github.com/google/fonts/raw/main/ofl/ptserif/PTSerif-Regular.ttf" },
-        LibreBaskerville = { url = "https://github.com/google/fonts/raw/main/ofl/librebaskerville/LibreBaskerville-Regular.ttf" },
-        PressStart2P = { url = "https://github.com/google/fonts/raw/main/ofl/pressstart2p/PressStart2P-Regular.ttf" },
-        Silkscreen = { url = "https://github.com/google/fonts/raw/main/ofl/silkscreen/Silkscreen-Regular.ttf" },
-        PixelifySans = { url = "https://github.com/google/fonts/raw/main/ofl/pixelifysans/PixelifySans%5Bwght%5D.ttf" },
-        Lexend = { url = "https://github.com/google/fonts/raw/main/ofl/lexend/static/Lexend-Regular.ttf" }
-    }
-    
+function EspLib._internal.LoadCustomFont(fontName)
     local fontData = CustomFonts[fontName]
     if not fontData then return nil end
     
@@ -462,12 +283,12 @@ local function LoadCustomFont(fontName)
     return nil
 end
 
-local function ApplyFontToText(textLabel, settings)
+function EspLib._internal.ApplyFontToText(textLabel, settings)
     if settings.UseCustomFont then
-        if not LoadedCustomFonts[settings.CustomFontName] then
-            local font = LoadCustomFont(settings.CustomFontName)
+        if not EspLib._internal.LoadedCustomFonts[settings.CustomFontName] then
+            local font = EspLib._internal.LoadCustomFont(settings.CustomFontName)
             if font then
-                LoadedCustomFonts[settings.CustomFontName] = font
+                EspLib._internal.LoadedCustomFonts[settings.CustomFontName] = font
                 textLabel.FontFace = font
                 return true
             else
@@ -475,7 +296,7 @@ local function ApplyFontToText(textLabel, settings)
                 return false
             end
         else
-            textLabel.FontFace = LoadedCustomFonts[settings.CustomFontName]
+            textLabel.FontFace = EspLib._internal.LoadedCustomFonts[settings.CustomFontName]
             return true
         end
     else
@@ -484,11 +305,11 @@ local function ApplyFontToText(textLabel, settings)
     end
 end
 
-local function CreateTextLabel(textSettings, defaultText, player)
+function EspLib._internal.CreateTextLabel(textSettings, defaultText, player)
     local label = Create("TextLabel", {
         TextColor3 = textSettings.Color.Color,
         BorderColor3 = rgb(0, 0, 0),
-        Parent = Cache,
+        Parent = EspLib._internal.Cache,
         Name = textSettings.Position,
         Text = defaultText,
         BackgroundTransparency = 1,
@@ -500,7 +321,7 @@ local function CreateTextLabel(textSettings, defaultText, player)
         ZIndex = 2
     })
     
-    ApplyFontToText(label, textSettings)
+    EspLib._internal.ApplyFontToText(label, textSettings)
     
     local stroke = Create("UIStroke", {
         Parent = label,
@@ -518,7 +339,7 @@ local function CreateTextLabel(textSettings, defaultText, player)
     return label
 end
 
-local function ConvertScreenPoint(world_position)
+function EspLib._internal.ConvertScreenPoint(world_position)
     local ViewportSize = Camera.ViewportSize
     local LocalPos = Camera.CFrame:PointToObjectSpace(world_position)
     
@@ -537,7 +358,7 @@ local function ConvertScreenPoint(world_position)
     return Vector3.new(ScreenX * ViewportSize.X, ScreenY * ViewportSize.Y, -LocalPos.Z), OnScreen
 end
 
-local function BoxSolve(rootPart)
+function EspLib._internal.BoxSolve(rootPart)
     if not rootPart then
         return nil, nil, nil, nil
     end
@@ -546,8 +367,8 @@ local function BoxSolve(rootPart)
     local ViewportBottom = rootPart.Position - (rootPart.CFrame.UpVector * 2.5) - Camera.CFrame.UpVector
     local Distance = (rootPart.Position - Camera.CFrame.Position).Magnitude
     
-    local Top, TopIsRendered = ConvertScreenPoint(ViewportTop)
-    local Bottom, BottomIsRendered = ConvertScreenPoint(ViewportBottom)
+    local Top, TopIsRendered = EspLib._internal.ConvertScreenPoint(ViewportTop)
+    local Bottom, BottomIsRendered = EspLib._internal.ConvertScreenPoint(ViewportBottom)
     
     local Width = math.max(math.floor(math.abs(Top.X - Bottom.X)), 8)
     local Height = math.max(math.floor(math.max(math.abs(Bottom.Y - Top.Y), Width / 2)), 12)
@@ -557,71 +378,1018 @@ local function BoxSolve(rootPart)
     return BoxSize, BoxPosition, TopIsRendered, Distance
 end
 
--- The rest of the private functions (GetTeamColor, GetVelocity, etc.) remain the same as in the original
--- I'll include the most important ones but for brevity, I'll skip the full implementation here
--- The complete version would include all the private functions from the original
+function EspLib._internal.GetTeamColor(player)
+    if not EspLib.Settings.Main.UseTeamColor then
+        return nil
+    end
+    
+    local team = player.Team
+    if team and team.TeamColor then
+        return team.TeamColor.Color
+    end
+    return nil
+end
 
--- Initialize function (from original)
-local function Initialize()
+function EspLib._internal.GetVelocity(player)
+    if not player or not player.Character then
+        return 0
+    end
+    
+    local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then
+        return 0
+    end
+    
+    local velocity = rootPart.AssemblyLinearVelocity
+    if not velocity then
+        return 0
+    end
+    
+    return velocity.Magnitude
+end
+
+function EspLib._internal.GetAverageVelocity(player)
+    if not EspLib._internal.VelocitySamples[player.Name] then
+        EspLib._internal.VelocitySamples[player.Name] = {}
+    end
+    
+    local samples = EspLib._internal.VelocitySamples[player.Name]
+    local currentVel = EspLib._internal.GetVelocity(player)
+    
+    table.insert(samples, currentVel)
+    
+    local maxSamples = EspLib.Settings.VelocityText.AverageSamples or 10
+    if #samples > maxSamples then
+        table.remove(samples, 1)
+    end
+    
+    local sum = 0
+    for _, v in pairs(samples) do
+        sum = sum + v
+    end
+    
+    return sum / #samples
+end
+
+function EspLib._internal.GetEquippedItem(player)
+    if not player then
+        return nil
+    end
+    
+    return player:GetAttribute("EquippedItem")
+end
+
+function EspLib._internal.ShouldHideForTeam(player)
+    if not EspLib.Settings.EquippedItemText.HideForTeamKiller then
+        return false
+    end
+    
+    local team = player.Team
+    if team and team.Name == EspLib.Settings.EquippedItemText.KillerTeamName then
+        return true
+    end
+    return false
+end
+
+function EspLib._internal.CreateBoxElements(Items, player)
+    local teamColor = EspLib._internal.GetTeamColor(player)
+    
+    Items.Box = Create("Frame", {
+        Parent = EspLib._internal.Cache,
+        Name = "",
+        BackgroundTransparency = 1,
+        Position = dim2(0, 1, 0, 1),
+        BorderColor3 = rgb(0, 0, 0),
+        Size = dim2(1, -2, 1, -2),
+        BorderSizePixel = 0,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Create("UIStroke", {
+        Parent = Items.Box,
+        LineJoinMode = Enum.LineJoinMode.Miter
+    })
+    
+    Items.Inner = Create("Frame", {
+        Parent = Items.Box,
+        Name = "",
+        BackgroundTransparency = 1,
+        Position = dim2(0, 1, 0, 1),
+        BorderColor3 = rgb(0, 0, 0),
+        Size = dim2(1, -2, 1, -2),
+        BorderSizePixel = 0,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Items.UIStroke = Create("UIStroke", {
+        Color = teamColor or rgb(255, 255, 255),
+        LineJoinMode = Enum.LineJoinMode.Miter,
+        Parent = Items.Inner
+    })
+    
+    Items.BoxGradient = Create("UIGradient", {
+        Parent = Items.UIStroke,
+        Color = EspLib.Settings.Box.Gradient.ColorSequence,
+        Enabled = EspLib.Settings.Box.GradientEnabled,
+        Rotation = EspLib.Settings.Box.Gradient.Rotation
+    })
+    
+    if teamColor then
+        Items.UIStroke.Color = teamColor
+        Items.BoxGradient.Enabled = false
+    end
+    
+    Items.Inner2 = Create("Frame", {
+        Parent = Items.Inner,
+        Name = "",
+        BackgroundTransparency = 1,
+        Position = dim2(0, 1, 0, 1),
+        BorderColor3 = rgb(0, 0, 0),
+        Size = dim2(1, -2, 1, -2),
+        BorderSizePixel = 0,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Create("UIStroke", {
+        Parent = Items.Inner2,
+        LineJoinMode = Enum.LineJoinMode.Miter
+    })
+    
+    Items.Corners = Create("Frame", {
+        Parent = EspLib._internal.Cache,
+        Name = "",
+        BackgroundTransparency = 1,
+        BorderColor3 = rgb(0, 0, 0),
+        Size = dim2(1, 0, 1, 0),
+        BorderSizePixel = 0,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Items.BottomLeftX = Create("ImageLabel", {
+        ScaleType = Enum.ScaleType.Slice,
+        Parent = Items.Corners,
+        BorderColor3 = rgb(0, 0, 0),
+        Name = "",
+        BackgroundColor3 = rgb(255, 255, 255),
+        Size = dim2(0.4, 0, 0, 3),
+        AnchorPoint = vec2(0, 1),
+        Image = "rbxassetid://83548615999411",
+        BackgroundTransparency = 1,
+        Position = dim2(0, 0, 1, 0),
+        ZIndex = 2,
+        BorderSizePixel = 0,
+        SliceCenter = rect(vec2(1, 1), vec2(99, 2))
+    })
+    
+    local gradient = Create("UIGradient", { Parent = Items.BottomLeftX })
+    if teamColor then
+        gradient.Color = ColorSequence.new(teamColor)
+    end
+    
+    Items.BottomLeftY = Create("ImageLabel", {
+        ScaleType = Enum.ScaleType.Slice,
+        Parent = Items.Corners,
+        BorderColor3 = rgb(0, 0, 0),
+        Name = "",
+        BackgroundColor3 = rgb(255, 255, 255),
+        Size = dim2(0, 3, 0.25, 0),
+        AnchorPoint = vec2(0, 1),
+        Image = "rbxassetid://101715268403902",
+        BackgroundTransparency = 1,
+        Position = dim2(0, 0, 1, -2),
+        ZIndex = 500,
+        BorderSizePixel = 0,
+        SliceCenter = rect(vec2(1, 0), vec2(2, 96))
+    })
+    
+    gradient = Create("UIGradient", { Rotation = -90, Parent = Items.BottomLeftY })
+    if teamColor then
+        gradient.Color = ColorSequence.new(teamColor)
+    end
+    
+    Items.BottomRightX = Create("ImageLabel", {
+        ScaleType = Enum.ScaleType.Slice,
+        Parent = Items.Corners,
+        BorderColor3 = rgb(0, 0, 0),
+        Name = "",
+        BackgroundColor3 = rgb(255, 255, 255),
+        Size = dim2(0.4, 0, 0, 3),
+        AnchorPoint = vec2(1, 1),
+        Image = "rbxassetid://83548615999411",
+        BackgroundTransparency = 1,
+        Position = dim2(1, 0, 1, 0),
+        ZIndex = 2,
+        BorderSizePixel = 0,
+        SliceCenter = rect(vec2(1, 1), vec2(99, 2))
+    })
+    
+    gradient = Create("UIGradient", { Parent = Items.BottomRightX })
+    if teamColor then
+        gradient.Color = ColorSequence.new(teamColor)
+    end
+    
+    Items.BottomRightY = Create("ImageLabel", {
+        ScaleType = Enum.ScaleType.Slice,
+        Parent = Items.Corners,
+        BorderColor3 = rgb(0, 0, 0),
+        Name = "",
+        BackgroundColor3 = rgb(255, 255, 255),
+        Size = dim2(0, 3, 0.25, 0),
+        AnchorPoint = vec2(1, 1),
+        Image = "rbxassetid://101715268403902",
+        BackgroundTransparency = 1,
+        Position = dim2(1, 0, 1, -2),
+        ZIndex = 500,
+        BorderSizePixel = 0,
+        SliceCenter = rect(vec2(1, 0), vec2(2, 96))
+    })
+    
+    gradient = Create("UIGradient", { Rotation = 90, Parent = Items.BottomRightY })
+    if teamColor then
+        gradient.Color = ColorSequence.new(teamColor)
+    end
+    
+    Items.TopLeftY = Create("ImageLabel", {
+        ScaleType = Enum.ScaleType.Slice,
+        BorderColor3 = rgb(0, 0, 0),
+        Parent = Items.Corners,
+        Name = "",
+        BackgroundColor3 = rgb(255, 255, 255),
+        Size = dim2(0, 3, 0.25, 0),
+        Image = "rbxassetid://102467475629368",
+        BackgroundTransparency = 1,
+        Position = dim2(0, 0, 0, 2),
+        ZIndex = 500,
+        BorderSizePixel = 0,
+        SliceCenter = rect(vec2(1, 0), vec2(2, 98))
+    })
+    
+    gradient = Create("UIGradient", { Rotation = 90, Parent = Items.TopLeftY })
+    if teamColor then
+        gradient.Color = ColorSequence.new(teamColor)
+    end
+    
+    Items.TopRightY = Create("ImageLabel", {
+        ScaleType = Enum.ScaleType.Slice,
+        Parent = Items.Corners,
+        BorderColor3 = rgb(0, 0, 0),
+        Name = "",
+        BackgroundColor3 = rgb(255, 255, 255),
+        Size = dim2(0, 3, 0.25, 0),
+        AnchorPoint = vec2(1, 0),
+        Image = "rbxassetid://102467475629368",
+        BackgroundTransparency = 1,
+        Position = dim2(1, 0, 0, 2),
+        ZIndex = 500,
+        BorderSizePixel = 0,
+        SliceCenter = rect(vec2(1, 0), vec2(2, 98))
+    })
+    
+    gradient = Create("UIGradient", { Rotation = -90, Parent = Items.TopRightY })
+    if teamColor then
+        gradient.Color = ColorSequence.new(teamColor)
+    end
+    
+    Items.TopRightX = Create("ImageLabel", {
+        ScaleType = Enum.ScaleType.Slice,
+        Parent = Items.Corners,
+        BorderColor3 = rgb(0, 0, 0),
+        Name = "",
+        BackgroundColor3 = rgb(255, 255, 255),
+        Size = dim2(0.4, 0, 0, 3),
+        AnchorPoint = vec2(1, 0),
+        Image = "rbxassetid://83548615999411",
+        BackgroundTransparency = 1,
+        Position = dim2(1, 0, 0, 0),
+        ZIndex = 2,
+        BorderSizePixel = 0,
+        SliceCenter = rect(vec2(1, 1), vec2(99, 2))
+    })
+    
+    gradient = Create("UIGradient", { Parent = Items.TopRightX })
+    if teamColor then
+        gradient.Color = ColorSequence.new(teamColor)
+    end
+    
+    Items.TopLeftX = Create("ImageLabel", {
+        ScaleType = Enum.ScaleType.Slice,
+        BorderColor3 = rgb(0, 0, 0),
+        Parent = Items.Corners,
+        Name = "",
+        BackgroundColor3 = rgb(255, 255, 255),
+        Image = "rbxassetid://83548615999411",
+        BackgroundTransparency = 1,
+        Size = dim2(0.4, 0, 0, 3),
+        ZIndex = 2,
+        BorderSizePixel = 0,
+        SliceCenter = rect(vec2(1, 1), vec2(99, 2))
+    })
+    
+    gradient = Create("UIGradient", { Parent = Items.TopLeftX })
+    if teamColor then
+        gradient.Color = ColorSequence.new(teamColor)
+    end
+    
+    if EspLib.Settings.Box.Type == "Corner" then
+        Items.Corners.Parent = Items.Holder
+        Items.Box.Parent = EspLib._internal.Cache
+    else
+        Items.Box.Parent = Items.Holder
+        Items.Corners.Parent = EspLib._internal.Cache
+    end
+    
+    if EspLib.Settings.Box.Fill then
+        Items.Holder.BackgroundTransparency = 0
+        if EspLib.Settings.Box.FillGradientEnabled then
+            Items.HolderGradient.Color = EspLib.Settings.Box.FillGradient.ColorSequence
+            Items.HolderGradient.Transparency = EspLib.Settings.Box.FillGradient.Transparency
+            Items.HolderGradient.Rotation = EspLib.Settings.Box.FillGradient.Rotation
+        end
+    else
+        Items.Holder.BackgroundTransparency = 1
+        Items.HolderGradient.Enabled = false
+    end
+    
+    if EspLib.Settings.Main.UseTeamColor then
+        local teamConn = player:GetPropertyChangedSignal("Team"):Connect(function()
+            local newColor = EspLib._internal.GetTeamColor(player)
+            if newColor and Items.UIStroke then
+                Items.UIStroke.Color = newColor
+                for _, child in pairs(Items.Corners:GetChildren()) do
+                    if child:IsA("ImageLabel") then
+                        local grad = child:FindFirstChild("UIGradient")
+                        if grad then
+                            grad.Color = ColorSequence.new(newColor)
+                        end
+                    end
+                end
+            end
+        end)
+        table.insert(EspLib._internal.EspConnections, teamConn)
+    end
+end
+
+function EspLib._internal.CreateHealthbarElements(Items)
+    Items.Healthbar = Create("Frame", {
+        Name = EspLib.Settings.Healthbar.Position,
+        Parent = EspLib._internal.Cache,
+        BorderColor3 = rgb(0, 0, 0),
+        Size = dim2(0, EspLib.Settings.Healthbar.Thickness, 0, EspLib.Settings.Healthbar.Thickness),
+        BorderSizePixel = 0,
+        BackgroundColor3 = rgb(0, 0, 0),
+        ZIndex = 1,
+        ClipsDescendants = true
+    })
+    
+    Items.HealthbarAccent = Create("Frame", {
+        Parent = Items.Healthbar,
+        Name = "",
+        Position = dim2(0, 1, 0, 1),
+        BorderColor3 = rgb(0, 0, 0),
+        Size = dim2(1, -2, 1, -2),
+        BorderSizePixel = 0,
+        BackgroundColor3 = rgb(255, 255, 255),
+        ZIndex = 1
+    })
+    
+    Items.HealthbarFade = Create("Frame", {
+        Parent = Items.Healthbar,
+        Name = "",
+        Position = dim2(0, 1, 0, 1),
+        BorderColor3 = rgb(0, 0, 0),
+        Size = dim2(1, -2, 1, -2),
+        BorderSizePixel = 0,
+        BackgroundColor3 = rgb(0, 0, 0),
+        ZIndex = 2
+    })
+    
+    Items.HealthbarGradient = Create("UIGradient", {
+        Enabled = EspLib.Settings.Healthbar.GradientEnabled,
+        Parent = Items.HealthbarAccent,
+        Rotation = EspLib.Settings.Healthbar.Gradient.Rotation,
+        Color = EspLib.Settings.Healthbar.Gradient.ColorSequence
+    })
+    
+    Items.Healthbar.Parent = Items[EspLib.Settings.Healthbar.Position]
+    Items.Healthbar.Visible = true
+end
+
+function EspLib._internal.CreateHealthTextElements(Items, player)
+    Items.HealthText = EspLib._internal.CreateTextLabel(EspLib.Settings.HealthText, "100", player)
+    Items.HealthText.Parent = Items[EspLib.Settings.HealthText.Position .. "Texts"]
+    if EspLib.Settings.HealthText.Position == "Top" or EspLib.Settings.HealthText.Position == "Bottom" then
+        Items.HealthText.AutomaticSize = Enum.AutomaticSize.Y
+        Items.HealthText.TextXAlignment = Enum.TextXAlignment.Center
+    else
+        Items.HealthText.AutomaticSize = Enum.AutomaticSize.XY
+        Items.HealthText.TextXAlignment = EspLib.Settings.HealthText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
+    end
+end
+
+function EspLib._internal.CreateVelocityTextElements(Items, player)
+    Items.VelocityText = EspLib._internal.CreateTextLabel(EspLib.Settings.VelocityText, "0", player)
+    Items.VelocityText.Parent = Items[EspLib.Settings.VelocityText.Position .. "Texts"]
+    if EspLib.Settings.VelocityText.Position == "Top" or EspLib.Settings.VelocityText.Position == "Bottom" then
+        Items.VelocityText.AutomaticSize = Enum.AutomaticSize.Y
+        Items.VelocityText.TextXAlignment = Enum.TextXAlignment.Center
+    else
+        Items.VelocityText.AutomaticSize = Enum.AutomaticSize.XY
+        Items.VelocityText.TextXAlignment = EspLib.Settings.VelocityText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
+    end
+end
+
+function EspLib._internal.CreateNameTextElements(Items, player)
+    Items.Text = EspLib._internal.CreateTextLabel(EspLib.Settings.NameText, player.Name, player)
+    Items.Text.Parent = Items[EspLib.Settings.NameText.Position .. "Texts"]
+    if EspLib.Settings.NameText.Position == "Top" or EspLib.Settings.NameText.Position == "Bottom" then
+        Items.Text.AutomaticSize = Enum.AutomaticSize.Y
+        Items.Text.TextXAlignment = Enum.TextXAlignment.Center
+    else
+        Items.Text.AutomaticSize = Enum.AutomaticSize.XY
+        Items.Text.TextXAlignment = EspLib.Settings.NameText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
+    end
+end
+
+function EspLib._internal.CreateDistanceTextElements(Items)
+    Items.Distance = EspLib._internal.CreateTextLabel(EspLib.Settings.DistanceText, "0m", nil)
+    Items.Distance.Parent = Items[EspLib.Settings.DistanceText.Position .. "Texts"]
+    if EspLib.Settings.DistanceText.Position == "Top" or EspLib.Settings.DistanceText.Position == "Bottom" then
+        Items.Distance.AutomaticSize = Enum.AutomaticSize.Y
+        Items.Distance.TextXAlignment = Enum.TextXAlignment.Center
+    else
+        Items.Distance.AutomaticSize = Enum.AutomaticSize.XY
+        Items.Distance.TextXAlignment = EspLib.Settings.DistanceText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
+    end
+end
+
+function EspLib._internal.CreateEquippedItemTextElements(Items, player)
+    Items.EquippedItem = EspLib._internal.CreateTextLabel(EspLib.Settings.EquippedItemText, "", player)
+    Items.EquippedItem.Parent = Items[EspLib.Settings.EquippedItemText.Position .. "Texts"]
+    if EspLib.Settings.EquippedItemText.Position == "Top" or EspLib.Settings.EquippedItemText.Position == "Bottom" then
+        Items.EquippedItem.AutomaticSize = Enum.AutomaticSize.Y
+        Items.EquippedItem.TextXAlignment = Enum.TextXAlignment.Center
+    else
+        Items.EquippedItem.AutomaticSize = Enum.AutomaticSize.XY
+        Items.EquippedItem.TextXAlignment = EspLib.Settings.EquippedItemText.Position == "Right" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right
+    end
+end
+
+function EspLib._internal.CreateChamsElements(Data)
+    if Data.Highlight then
+        Data.Highlight:Destroy()
+        Data.Highlight = nil
+    end
+    
+    if EspLib.Settings.Chams.Enabled and EspLib.Settings.Main.Enabled then
+        Data.Highlight = Create("Highlight", {
+            FillColor = EspLib.Settings.Chams.Fill.Color,
+            Enabled = true,
+            OutlineTransparency = EspLib.Settings.Chams.Outline.Transparency,
+            Adornee = Data.Info.Character,
+            FillTransparency = EspLib.Settings.Chams.Fill.Transparency,
+            OutlineColor = EspLib.Settings.Chams.Outline.Color,
+            Parent = CoreGui,
+            DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        })
+    end
+end
+
+function EspLib._internal.CreateObject(player)
+    local Data = {
+        Items = {},
+        Info = {}
+    }
+    
+    local Items = Data.Items
+    
+    EspLib._internal.VelocitySamples[player.Name] = {}
+    
+    Items.Holder = Create("Frame", {
+        Parent = EspLib._internal.ScreenGui,
+        Visible = false,
+        Name = "",
+        BackgroundTransparency = 1,
+        Position = dim2(0.433, 0, 0.326, 0),
+        BorderColor3 = rgb(0, 0, 0),
+        Size = dim2(0, 211, 0, 240),
+        BorderSizePixel = 0,
+        BackgroundColor3 = rgb(255, 255, 255),
+        ZIndex = 1
+    })
+    
+    Items.HolderGradient = Create("UIGradient", {
+        Rotation = 0,
+        Name = "",
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, rgb(255, 255, 255)),
+            ColorSequenceKeypoint.new(1, rgb(255, 255, 255))
+        }),
+        Parent = Items.Holder,
+        Enabled = false
+    })
+    
+    Items.Left = Create("Frame", {
+        Parent = Items.Holder,
+        Size = dim2(0, 0, 1, 0),
+        Name = "",
+        BackgroundTransparency = 1,
+        Position = dim2(0, -1, 0, 0),
+        BorderColor3 = rgb(0, 0, 0),
+        ZIndex = 2,
+        BorderSizePixel = 0,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Create("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal,
+        HorizontalAlignment = Enum.HorizontalAlignment.Right,
+        VerticalFlex = Enum.UIFlexAlignment.Fill,
+        Parent = Items.Left,
+        Padding = dim(0, 1),
+        SortOrder = Enum.SortOrder.LayoutOrder
+    })
+    
+    Items.LeftTexts = Create("Frame", {
+        LayoutOrder = -100,
+        Parent = Items.Left,
+        BackgroundTransparency = 1,
+        Name = "",
+        BorderColor3 = rgb(0, 0, 0),
+        BorderSizePixel = 0,
+        AutomaticSize = Enum.AutomaticSize.X,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Create("UIListLayout", {
+        Parent = Items.LeftTexts,
+        Padding = dim(0, 1),
+        SortOrder = Enum.SortOrder.LayoutOrder
+    })
+    
+    Items.Bottom = Create("Frame", {
+        Parent = Items.Holder,
+        Size = dim2(1, 0, 0, 0),
+        Name = "",
+        BackgroundTransparency = 1,
+        Position = dim2(0, 0, 1, 1),
+        BorderColor3 = rgb(0, 0, 0),
+        ZIndex = 2,
+        BorderSizePixel = 0,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Create("UIListLayout", {
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+        HorizontalFlex = Enum.UIFlexAlignment.Fill,
+        Parent = Items.Bottom,
+        Padding = dim(0, 1)
+    })
+    
+    Items.BottomTexts = Create("Frame", {
+        LayoutOrder = 1,
+        Parent = Items.Bottom,
+        BackgroundTransparency = 1,
+        Name = "",
+        BorderColor3 = rgb(0, 0, 0),
+        BorderSizePixel = 0,
+        AutomaticSize = Enum.AutomaticSize.XY,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Create("UIListLayout", {
+        Parent = Items.BottomTexts,
+        Padding = dim(0, 1),
+        SortOrder = Enum.SortOrder.LayoutOrder
+    })
+    
+    Items.Top = Create("Frame", {
+        Parent = Items.Holder,
+        Size = dim2(1, 0, 0, 0),
+        Name = "",
+        BackgroundTransparency = 1,
+        Position = dim2(0, 0, 0, -1),
+        BorderColor3 = rgb(0, 0, 0),
+        ZIndex = 2,
+        BorderSizePixel = 0,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Create("UIListLayout", {
+        VerticalAlignment = Enum.VerticalAlignment.Bottom,
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+        HorizontalFlex = Enum.UIFlexAlignment.Fill,
+        Parent = Items.Top,
+        Padding = dim(0, 1)
+    })
+    
+    Items.TopTexts = Create("Frame", {
+        LayoutOrder = -100,
+        Parent = Items.Top,
+        BackgroundTransparency = 1,
+        Name = "",
+        BorderColor3 = rgb(0, 0, 0),
+        BorderSizePixel = 0,
+        AutomaticSize = Enum.AutomaticSize.XY,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Create("UIListLayout", {
+        Parent = Items.TopTexts,
+        Padding = dim(0, 1),
+        SortOrder = Enum.SortOrder.LayoutOrder
+    })
+    
+    Items.Right = Create("Frame", {
+        Parent = Items.Holder,
+        Size = dim2(0, 0, 1, 0),
+        Name = "",
+        BackgroundTransparency = 1,
+        Position = dim2(1, 1, 0, 0),
+        BorderColor3 = rgb(0, 0, 0),
+        ZIndex = 2,
+        BorderSizePixel = 0,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Create("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal,
+        VerticalFlex = Enum.UIFlexAlignment.Fill,
+        Parent = Items.Right,
+        Padding = dim(0, 1),
+        SortOrder = Enum.SortOrder.LayoutOrder
+    })
+    
+    Items.RightTexts = Create("Frame", {
+        LayoutOrder = 100,
+        Parent = Items.Right,
+        BackgroundTransparency = 1,
+        Name = "",
+        BorderColor3 = rgb(0, 0, 0),
+        BorderSizePixel = 0,
+        AutomaticSize = Enum.AutomaticSize.X,
+        BackgroundColor3 = rgb(255, 255, 255)
+    })
+    
+    Create("UIListLayout", {
+        Parent = Items.RightTexts,
+        Padding = dim(0, 1),
+        SortOrder = Enum.SortOrder.LayoutOrder
+    })
+    
+    if EspLib.Settings.Box.Enabled then
+        EspLib._internal.CreateBoxElements(Items, player)
+    end
+    
+    if EspLib.Settings.Healthbar.Enabled then
+        EspLib._internal.CreateHealthbarElements(Items)
+    end
+    
+    if EspLib.Settings.HealthText.Enabled then
+        EspLib._internal.CreateHealthTextElements(Items, player)
+    end
+    
+    if EspLib.Settings.VelocityText.Enabled then
+        EspLib._internal.CreateVelocityTextElements(Items, player)
+    end
+    
+    if EspLib.Settings.NameText.Enabled then
+        EspLib._internal.CreateNameTextElements(Items, player)
+    end
+    
+    if EspLib.Settings.DistanceText.Enabled then
+        EspLib._internal.CreateDistanceTextElements(Items)
+    end
+    
+    if EspLib.Settings.EquippedItemText.Enabled then
+        EspLib._internal.CreateEquippedItemTextElements(Items, player)
+    end
+    
+    local HealthTween = nil
+    
+    Data.HealthChanged = function(Value)
+        if EspLib.Settings.Healthbar.Enabled and Items.Healthbar then
+            local Multiplier = math.clamp(Value / 100, 0, 1)
+            local isHorizontal = EspLib.Settings.Healthbar.Position == "Top" or EspLib.Settings.Healthbar.Position == "Bottom"
+            
+            local targetSize
+            local targetPosition
+            
+            if isHorizontal then
+                local widthMult = 1 - Multiplier
+                targetSize = dim2(widthMult, -2 * widthMult, 1, -2)
+                targetPosition = dim2(Multiplier, 1, 0, 1)
+            else
+                local heightMult = 1 - Multiplier
+                targetSize = dim2(1, -2, heightMult, -2 * heightMult)
+                targetPosition = dim2(0, 1, 0, 1)
+            end
+            
+            if EspLib.Settings.Healthbar.Tween and TweenService then
+                if HealthTween and HealthTween.Cancel then
+                    HealthTween:Cancel()
+                end
+                
+                local tweenInfo = TweenInfo.new(
+                    EspLib.Settings.Healthbar.TweenSpeed,
+                    Enum.EasingStyle[EspLib.Settings.Healthbar.EasingStyle],
+                    Enum.EasingDirection[EspLib.Settings.Healthbar.EasingDirection]
+                )
+                
+                HealthTween = TweenService:Create(Items.HealthbarFade, tweenInfo, {
+                    Size = targetSize,
+                    Position = targetPosition
+                })
+                HealthTween:Play()
+            else
+                Items.HealthbarFade.Size = targetSize
+                Items.HealthbarFade.Position = targetPosition
+            end
+        end
+        
+        if EspLib.Settings.HealthText.Enabled and Items.HealthText then
+            Items.HealthText.Text = tostring(math.round(Value))
+        end
+    end
+    
+    Data.UpdateVelocity = function()
+        if EspLib.Settings.VelocityText.Enabled and Items.VelocityText then
+            local avgVel = EspLib._internal.GetAverageVelocity(player)
+            Items.VelocityText.Text = math.round(avgVel)
+        end
+    end
+    
+    Data.UpdateEquippedItem = function()
+        if EspLib.Settings.EquippedItemText.Enabled and Items.EquippedItem then
+            if EspLib._internal.ShouldHideForTeam(player) then
+                Items.EquippedItem.Text = ""
+                return
+            end
+            
+            local item = EspLib._internal.GetEquippedItem(player)
+            if item and item ~= "" then
+                Items.EquippedItem.Text = item
+            else
+                Items.EquippedItem.Text = ""
+            end
+        end
+    end
+    
+    Data.RefreshChams = function()
+        if EspLib.Settings.Chams.Enabled and EspLib.Settings.Main.Enabled then
+            local Character = Data.Info.Character
+            if Character then
+                if not Data.Highlight then
+                    EspLib._internal.CreateChamsElements(Data)
+                else
+                    Data.Highlight.Adornee = Character
+                    Data.Highlight.Enabled = true
+                end
+            end
+        else
+            if Data.Highlight then
+                Data.Highlight:Destroy()
+                Data.Highlight = nil
+            end
+        end
+    end
+    
+    Data.RefreshDescendants = function()
+        local Character = player.Character
+        if not Character then
+            Character = player.CharacterAdded:Wait()
+        end
+        local Humanoid = Character:FindFirstChild("Humanoid")
+        if not Humanoid then
+            Humanoid = Character:WaitForChild("Humanoid")
+        end
+        
+        Data.Info.Character = Character
+        Data.Info.Humanoid = Humanoid
+        Data.Info.RootPart = Humanoid.RootPart
+        
+        if EspLib.Settings.Healthbar.Enabled or EspLib.Settings.HealthText.Enabled then
+            local conn = Humanoid.HealthChanged:Connect(function(h)
+                Data.HealthChanged(h)
+            end)
+            table.insert(EspLib._internal.EspConnections, conn)
+            Data.HealthChanged(Humanoid.Health)
+        end
+        
+        if EspLib.Settings.EquippedItemText.Enabled then
+            local attrConn = player:GetAttributeChangedSignal("EquippedItem"):Connect(function()
+                Data.UpdateEquippedItem()
+            end)
+            table.insert(EspLib._internal.EspConnections, attrConn)
+            
+            local teamConn = player:GetPropertyChangedSignal("Team"):Connect(function()
+                Data.UpdateEquippedItem()
+            end)
+            table.insert(EspLib._internal.EspConnections, teamConn)
+            
+            Data.UpdateEquippedItem()
+        end
+        
+        Data.RefreshChams()
+    end
+    
+    Data.Destroy = function()
+        if Items.Holder then
+            Items.Holder:Destroy()
+        end
+        if Data.Highlight then
+            Data.Highlight:Destroy()
+        end
+        EspLib._internal.VelocitySamples[player.Name] = nil
+        EspLib._internal.EspPlayers[player.Name] = nil
+    end
+    
+    Data.RefreshDescendants()
+    
+    local conn = player.CharacterAdded:Connect(function()
+        Data.RefreshDescendants()
+    end)
+    table.insert(EspLib._internal.EspConnections, conn)
+    
+    EspLib._internal.EspPlayers[player.Name] = Data
+end
+
+function EspLib._internal.Update()
+    if not EspLib.Settings.Main.Enabled then
+        for _, Data in pairs(EspLib._internal.EspPlayers) do
+            if Data.Items and Data.Items.Holder then
+                Data.Items.Holder.Visible = false
+            end
+            if Data.RefreshChams then
+                Data:RefreshChams()
+            end
+        end
+        return
+    end
+    
+    local hasAnyFeature = EspLib.Settings.Box.Enabled or EspLib.Settings.NameText.Enabled or EspLib.Settings.DistanceText.Enabled or EspLib.Settings.Healthbar.Enabled or EspLib.Settings.HealthText.Enabled or EspLib.Settings.VelocityText.Enabled or EspLib.Settings.EquippedItemText.Enabled
+    
+    if not hasAnyFeature then
+        for _, Data in pairs(EspLib._internal.EspPlayers) do
+            if Data.Items and Data.Items.Holder then
+                Data.Items.Holder.Visible = false
+            end
+        end
+        return
+    end
+    
+    if EspLib.Settings.VelocityText.Enabled then
+        for _, Data in pairs(EspLib._internal.EspPlayers) do
+            if Data.UpdateVelocity then
+                Data.UpdateVelocity()
+            end
+        end
+    end
+    
+    if EspLib.Settings.EquippedItemText.Enabled then
+        for _, Data in pairs(EspLib._internal.EspPlayers) do
+            if Data.UpdateEquippedItem then
+                Data.UpdateEquippedItem()
+            end
+        end
+    end
+    
+    local needsPositionCalc = EspLib.Settings.Box.Enabled or EspLib.Settings.DistanceText.Enabled
+    
+    for _, Data in pairs(EspLib._internal.EspPlayers) do
+        if Data.Info and Data.Info.Character and Data.Info.Humanoid and Data.Info.Humanoid.RootPart then
+            local Items = Data.Items
+            local Holder = Items.Holder
+            
+            if Holder then
+                if needsPositionCalc then
+                    local BoxSize, BoxPos, OnScreen, Distance = EspLib._internal.BoxSolve(Data.Info.Humanoid.RootPart)
+                    
+                    if Distance and Distance <= EspLib.Settings.Main.RenderDistance and OnScreen then
+                        Holder.Visible = true
+                        Holder.Position = dim_offset(BoxPos.X, BoxPos.Y)
+                        Holder.Size = dim2(0, BoxSize.X, 0, BoxSize.Y)
+                        
+                        if EspLib.Settings.DistanceText.Enabled and Items.Distance then
+                            Items.Distance.Text = tostring(math.round(Distance)) .. "m"
+                        end
+                    else
+                        Holder.Visible = false
+                    end
+                else
+                    Holder.Visible = true
+                end
+            end
+        end
+    end
+    
+    -- Refresh chams for all players
+    for _, Data in pairs(EspLib._internal.EspPlayers) do
+        if Data.RefreshChams then
+            Data:RefreshChams()
+        end
+    end
+end
+
+-- Public API
+function EspLib:Initialize()
+    if self._internal.Initialized then
+        return
+    end
+    
+    local Players = cloneref(game:GetService("Players"))
+    local RunService = cloneref(game:GetService("RunService"))
+    local Camera = cloneref(workspace.CurrentCamera)
+    local TweenService = cloneref(game:GetService("TweenService"))
+    local CoreGui = cloneref(game:GetService("CoreGui"))
+    local HttpService = cloneref(game:GetService("HttpService"))
+    
+    self._internal.ScreenGui = Instance.new("ScreenGui")
+    self._internal.ScreenGui.Name = "EspObject"
+    self._internal.ScreenGui.IgnoreGuiInset = true
+    self._internal.ScreenGui.ResetOnSpawn = false
+    self._internal.ScreenGui.Parent = CoreGui
+    
+    self._internal.Cache = Instance.new("ScreenGui")
+    self._internal.Cache.Name = "EspCache"
+    self._internal.Cache.Enabled = false
+    self._internal.Cache.ResetOnSpawn = false
+    self._internal.Cache.Parent = CoreGui
+    
     for _, player in pairs(Players:GetPlayers()) do
-        if CurrentSettings.Main.IncludeLocalPlayer then
-            CreateObject(player)
+        if self.Settings.Main.IncludeLocalPlayer then
+            self._internal.CreateObject(player)
         else
             if player ~= Players.LocalPlayer then
-                CreateObject(player)
+                self._internal.CreateObject(player)
             end
-        }
+        end
     end
 
     local playerAddedConn = Players.PlayerAdded:Connect(function(player)
-        if CurrentSettings.Main.IncludeLocalPlayer then
-            CreateObject(player)
+        if self.Settings.Main.IncludeLocalPlayer then
+            self._internal.CreateObject(player)
         else
             if player ~= Players.LocalPlayer then
-                CreateObject(player)
+                self._internal.CreateObject(player)
             end
         end
     end)
-    table.insert(EspConnections, playerAddedConn)
+    table.insert(self._internal.EspConnections, playerAddedConn)
 
     local playerRemovingConn = Players.PlayerRemoving:Connect(function(player)
-        if EspPlayers[player.Name] then
-            EspPlayers[player.Name].Destroy()
+        if self._internal.EspPlayers[player.Name] then
+            self._internal.EspPlayers[player.Name].Destroy()
         end
     end)
-    table.insert(EspConnections, playerRemovingConn)
+    table.insert(self._internal.EspConnections, playerRemovingConn)
 
-    LoopConnection = RunService:BindToRenderStep("Run Loop", Enum.RenderPriority.Camera.Value + 1, Update)
+    self._internal.LoopConnection = RunService:BindToRenderStep("Run Loop", Enum.RenderPriority.Camera.Value + 1, function()
+        self._internal.Update()
+    end)
+    
+    self._internal.Initialized = true
 end
 
--- Unload function (from original)
-local function Unload()
-    for _, conn in pairs(EspConnections) do
+function EspLib:Unload()
+    for _, conn in pairs(self._internal.EspConnections) do
         conn:Disconnect()
     end
-    if LoopConnection then
+    if self._internal.LoopConnection then
+        local RunService = cloneref(game:GetService("RunService"))
         RunService:UnbindFromRenderStep("Run Loop")
-        LoopConnection = nil
+        self._internal.LoopConnection = nil
     end
-    for _, data in pairs(EspPlayers) do
+    for _, data in pairs(self._internal.EspPlayers) do
         if data.Destroy then
             data.Destroy()
         end
     end
-    if ScreenGui then
-        ScreenGui:Destroy()
+    if self._internal.ScreenGui then
+        self._internal.ScreenGui:Destroy()
     end
-    if Cache then
-        Cache:Destroy()
+    if self._internal.Cache then
+        self._internal.Cache:Destroy()
+    end
+    self._internal.Initialized = false
+end
+
+function EspLib:UpdateSettings(newSettings)
+    for category, settings in pairs(newSettings) do
+        if self.Settings[category] then
+            for key, value in pairs(settings) do
+                if type(value) == "table" and type(self.Settings[category][key]) == "table" then
+                    for subKey, subValue in pairs(value) do
+                        self.Settings[category][key][subKey] = subValue
+                    end
+                else
+                    self.Settings[category][key] = value
+                end
+            end
+        end
     end
 end
 
--- The rest of the private functions would be included here
--- (CreateObject, CreateBoxElements, CreateHealthbarElements, etc.)
--- For brevity, I've omitted the full implementation
-
--- Initialize settings
-ESPLib:UpdateSettings(DefaultSettings)
-
 -- Return the library
-return ESPLib
+return EspLib
