@@ -514,7 +514,7 @@ local function CreateBoxElements(Items, player)
 end
 
 local function CreateHealthbarElements(Items)
-    -- Background (black outline)
+    -- Background (black outline) with clipping to prevent bleed
     Items.Healthbar = Create("Frame", {
         Name = Settings.Healthbar.Position,
         Parent = Cache,
@@ -522,7 +522,8 @@ local function CreateHealthbarElements(Items)
         Size = dim2(0, Settings.Healthbar.Thickness, 0, Settings.Healthbar.Thickness),
         BorderSizePixel = 0,
         BackgroundColor3 = rgb(0, 0, 0),
-        ZIndex = 1
+        ZIndex = 1,
+        ClipsDescendants = true  -- Prevents fade/accent from bleeding outside the bar
     })
     
     -- The actual health bar (colored/gradient) - behind the fade
@@ -857,12 +858,14 @@ local function CreateObject(player)
         if isHorizontal then
             -- Horizontal healthbar (Top or Bottom)
             -- Fade grows from left to right, remaining health stays at left
-            targetSize = dim2(1 - Multiplier, -2, 1, -2)
+            local widthMult = 1 - Multiplier
+            targetSize = dim2(widthMult, -2 * widthMult, 1, -2)
             targetPosition = dim2(Multiplier, 1, 0, 1)
         else
             -- Vertical healthbar (Left or Right)
             -- Fade grows from top downward, remaining health stays at bottom
-            targetSize = dim2(1, -2, 1 - Multiplier, -2)
+            local heightMult = 1 - Multiplier
+            targetSize = dim2(1, -2, heightMult, -2 * heightMult)
             targetPosition = dim2(0, 1, 0, 1)  -- Always anchored at top
         end
         
