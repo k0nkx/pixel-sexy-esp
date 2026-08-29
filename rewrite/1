@@ -1,0 +1,1132 @@
+local cloneref = cloneref or function(service)
+	return service
+end
+
+local Players = cloneref(game:GetService("Players"))
+local RunService = cloneref(game:GetService("RunService"))
+local TweenService = cloneref(game:GetService("TweenService"))
+local HttpService = cloneref(game:GetService("HttpService"))
+local CoreGui = cloneref(game:GetService("CoreGui"))
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local RENDER_NAME = "HealthRender"
+
+do
+	local old = CoreGui:FindFirstChild("HealthDisplay")
+	if old then
+		old:Destroy()
+	end
+	pcall(function()
+		RunService:UnbindFromRenderStep(RENDER_NAME)
+	end)
+	if _G.HealthDisplayCleanup then
+		pcall(_G.HealthDisplayCleanup)
+		_G.HealthDisplayCleanup = nil
+	end
+end
+
+local Settings = {
+	Main = {
+		Enabled = true,
+		RenderDistance = 10000,
+		IncludeLocalPlayer = false,
+	},
+	Healthbar = {
+		Enabled = true,
+		Position = "Left",
+		Thickness = 3,
+		Tween = true,
+		TweenSpeed = 0.15,
+		EasingStyle = Enum.EasingStyle.Quad,
+		EasingDirection = Enum.EasingDirection.Out,
+		GradientEnabled = true,
+		Gradient = {
+			ColorSequence = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(246, 199, 255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(235, 130, 255))
+			}),
+			Rotation = 90,
+		}
+	},
+	HealthText = {
+		Enabled = true,
+		Size = 9,
+		Color = Color3.fromRGB(255, 255, 255),
+		Outline = true,
+	},
+	HealthChange = {
+		Enabled = true,
+		MaxVisible = 3,
+		HoldTime = 0.5,
+		FadeTime = 2.5,
+		TextSize = 9,
+		Spacing = 1,
+		OffsetX = 2,
+		OffsetY = -5,
+		DamageColor = Color3.fromRGB(255, 75, 75),
+		HealColor = Color3.fromRGB(100, 255, 130),
+	},
+	Name = {
+		Enabled = true,
+		Mode = "Both", -- "DisplayName", "Username", "Both"
+		Size = 9,
+		Color = Color3.fromRGB(255, 255, 255),
+		Outline = true,
+	},
+	FriendName = {
+		Enabled = true,
+		Text = "friend",
+		Color = Color3.fromRGB(100, 255, 150),
+	},
+	Tool = {
+		Enabled = true,
+		Size = 9,
+		Color = Color3.fromRGB(200, 200, 255),
+		Outline = true,
+	},
+	Distance = {
+		Enabled = true,
+		Size = 9,
+		Color = Color3.fromRGB(255, 255, 255),
+		Outline = true,
+		Suffix = "m",
+	},
+	NPC = {
+		Enabled = true,
+		NameSize = 9,
+		NameColor = Color3.fromRGB(255, 200, 100),
+		ShowHealthbar = true,
+		ShowHealthText = true,
+		ShowDistance = true,
+		ShowName = true,
+	},
+	Death = {
+		Enabled = true,
+		HoldTime = 1,
+		FadeTime = 3,
+	},
+}
+
+local function LoadCustomFont(Name, Link)
+	local fn = Name:gsub("%s+", "")
+	local ttf = fn .. ".ttf"
+	local json = fn .. ".ttf.json"
+
+	if not isfile(ttf) then
+		local ok, data = pcall(function()
+			return game:HttpGet(Link)
+		end)
+		if not ok or not data or #data == 0 then
+			return nil
+		end
+		local wrote = pcall(function()
+			writefile(ttf, data)
+		end)
+		if not wrote or not isfile(ttf) then
+			return nil
+		end
+	end
+
+	pcall(function()
+		if isfile(json) then
+			delfile(json)
+		end
+	end)
+
+	local asset
+	local okAsset = pcall(function()
+		asset = getcustomasset(ttf)
+	end)
+	if not okAsset or not asset then
+		return nil
+	end
+
+	local config = {
+		name = fn,
+		faces = {{
+			name = "Regular",
+			weight = 400,
+			style = "normal",
+			assetId = asset
+		}}
+	}
+
+	local okWrite = pcall(function()
+		writefile(json, HttpService:JSONEncode(config))
+	end)
+	if not okWrite or not isfile(json) then
+		return nil
+	end
+
+	local okFont, font = pcall(function()
+		return Font.new(getcustomasset(json), Enum.FontWeight.Regular)
+	end)
+	if okFont and font then
+		return font
+	end
+	return nil
+end
+
+local CustomFont = LoadCustomFont(
+	"Smallest Pixel-7",
+	"https://raw.githubusercontent.com/k0nkx/UI-Lib-Tuff/refs/heads/main/fonts/smallest_pixel-7.ttf"
+)
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "HealthDisplay"
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = CoreGui
+
+local PlayerData = {}
+local NPCData = {}
+local FriendCache = {}
+local GlobalConnections = {}
+
+local function CleanupAll()
+	for _, conn in ipairs(GlobalConnections) do
+		if typeof(conn) == "RBXScriptConnection" and conn.Connected then
+			conn:Disconnect()
+		end
+	end
+	table.clear(GlobalConnections)
+
+	for _, data in pairs(PlayerData) do
+		if data.Destroy then data.Destroy() end
+	end
+	table.clear(PlayerData)
+
+	for _, data in pairs(NPCData) do
+		if data.Destroy then data.Destroy() end
+	end
+	table.clear(NPCData)
+
+	pcall(function()
+		RunService:UnbindFromRenderStep(RENDER_NAME)
+	end)
+
+	if ScreenGui then
+		ScreenGui:Destroy()
+	end
+end
+
+_G.HealthDisplayCleanup = CleanupAll
+
+local function ConvertScreenPoint(world_position)
+	local ViewportSize = Camera.ViewportSize
+	local LocalPos = Camera.CFrame:PointToObjectSpace(world_position)
+	local AspectRatio = ViewportSize.X / ViewportSize.Y
+	local HalfY = -LocalPos.Z * math.tan(math.rad(Camera.FieldOfView / 2))
+	local HalfX = AspectRatio * HalfY
+	local FarPlaneCorner = Vector3.new(-HalfX, HalfY, LocalPos.Z)
+	local RelativePos = LocalPos - FarPlaneCorner
+	local ScreenX = RelativePos.X / (HalfX * 2)
+	local ScreenY = -RelativePos.Y / (HalfY * 2)
+	local OnScreen = -LocalPos.Z > 0 and ScreenX >= 0 and ScreenX <= 1 and ScreenY >= 0 and ScreenY <= 1
+	return Vector3.new(ScreenX * ViewportSize.X, ScreenY * ViewportSize.Y, -LocalPos.Z), OnScreen
+end
+
+local function CalculateBoxFromWorld(topWorld, bottomWorld)
+	local Top, TopIsRendered = ConvertScreenPoint(topWorld)
+	local Bottom, BottomIsRendered = ConvertScreenPoint(bottomWorld)
+	local Width = math.max(math.floor(math.abs(Top.X - Bottom.X)), 8)
+	local Height = math.max(math.floor(math.max(math.abs(Bottom.Y - Top.Y), Width / 2)), 12)
+	local BoxSize = Vector2.new(math.floor(math.max(Height / 1.5, Width)), Height)
+	local BoxPosition = Vector2.new(math.floor(Top.X * 0.5 + Bottom.X * 0.5 - BoxSize.X * 0.5), math.floor(math.min(Top.Y, Bottom.Y)))
+	local Distance = ((topWorld + bottomWorld) * 0.5 - Camera.CFrame.Position).Magnitude
+	local OnScreen = TopIsRendered or BottomIsRendered
+	return BoxSize, BoxPosition, OnScreen, Distance
+end
+
+local function CalculateBox(rootPart)
+	if not rootPart then return nil, nil, nil, nil end
+	local ViewportTop = rootPart.Position + (rootPart.CFrame.UpVector * 1.8) + Camera.CFrame.UpVector
+	local ViewportBottom = rootPart.Position - (rootPart.CFrame.UpVector * 2.5) - Camera.CFrame.UpVector
+	return CalculateBoxFromWorld(ViewportTop, ViewportBottom)
+end
+
+local function ApplyFont(label)
+	if CustomFont then
+		label.FontFace = CustomFont
+	else
+		label.Font = Enum.Font.Code
+	end
+end
+
+local function CreateOutlinedText(parent, name, textSize, color, outline)
+	local label = Instance.new("TextLabel")
+	label.Name = name
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.new(1, 0, 0, textSize + 2)
+	label.Text = ""
+	label.TextSize = textSize
+	label.TextColor3 = color
+	label.TextXAlignment = Enum.TextXAlignment.Center
+	label.TextYAlignment = Enum.TextYAlignment.Center
+	label.ZIndex = 5
+	label.Parent = parent
+	ApplyFont(label)
+	if outline then
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 1
+		stroke.Color = Color3.fromRGB(0, 0, 0)
+		stroke.LineJoinMode = Enum.LineJoinMode.Miter
+		stroke.Parent = label
+	end
+	return label
+end
+
+local function CreateSideFrames(holder)
+	local items = {}
+	for _, side in ipairs({"Left", "Right", "Top", "Bottom"}) do
+		local frame = Instance.new("Frame")
+		frame.Name = side
+		frame.BackgroundTransparency = 1
+		frame.BorderSizePixel = 0
+		frame.ZIndex = 2
+		frame.Parent = holder
+		items[side] = frame
+	end
+
+	items.Left.Size = UDim2.new(0, 0, 1, 0)
+	items.Left.Position = UDim2.new(0, -Settings.Healthbar.Thickness - 1, 0, 0)
+	items.Right.Size = UDim2.new(0, 0, 1, 0)
+	items.Right.Position = UDim2.new(1, 1, 0, 0)
+	items.Top.Size = UDim2.new(1, 0, 0, 0)
+	items.Top.Position = UDim2.new(0, 0, 0, -1)
+	items.Bottom.Size = UDim2.new(1, 0, 0, 0)
+	items.Bottom.Position = UDim2.new(0, 0, 1, 1)
+
+	local leftLayout = Instance.new("UIListLayout")
+	leftLayout.FillDirection = Enum.FillDirection.Horizontal
+	leftLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	leftLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+	leftLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	leftLayout.Padding = UDim.new(0, 3)
+	leftLayout.Parent = items.Left
+
+	local rightLayout = Instance.new("UIListLayout")
+	rightLayout.FillDirection = Enum.FillDirection.Horizontal
+	rightLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	rightLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	rightLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	rightLayout.Parent = items.Right
+
+	local topLayout = Instance.new("UIListLayout")
+	topLayout.FillDirection = Enum.FillDirection.Vertical
+	topLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	topLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+	topLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	topLayout.Padding = UDim.new(0, 1)
+	topLayout.Parent = items.Top
+
+	local bottomLayout = Instance.new("UIListLayout")
+	bottomLayout.FillDirection = Enum.FillDirection.Vertical
+	bottomLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	bottomLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+	bottomLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	bottomLayout.Padding = UDim.new(0, 1)
+	bottomLayout.Parent = items.Bottom
+
+	return items
+end
+
+local function CreateHealthbar(Items)
+	local hb = Instance.new("Frame")
+	hb.Name = "Healthbar"
+	hb.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	hb.BorderSizePixel = 0
+	hb.ClipsDescendants = true
+	hb.ZIndex = 2
+	hb.LayoutOrder = 1
+
+	local accent = Instance.new("Frame")
+	accent.Name = "Accent"
+	accent.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	accent.BorderSizePixel = 0
+	accent.Size = UDim2.new(1, -2, 1, -2)
+	accent.Position = UDim2.new(0, 1, 0, 1)
+	accent.ZIndex = 1
+	accent.Parent = hb
+
+	local fade = Instance.new("Frame")
+	fade.Name = "Fade"
+	fade.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	fade.BorderSizePixel = 0
+	fade.Size = UDim2.new(1, -2, 0, 0)
+	fade.Position = UDim2.new(0, 1, 0, 1)
+	fade.ZIndex = 2
+	fade.Parent = hb
+
+	if Settings.Healthbar.GradientEnabled then
+		local gradient = Instance.new("UIGradient")
+		gradient.Color = Settings.Healthbar.Gradient.ColorSequence
+		gradient.Rotation = Settings.Healthbar.Gradient.Rotation
+		gradient.Parent = accent
+	end
+
+	local pos = Settings.Healthbar.Position
+	if pos == "Left" then
+		hb.Size = UDim2.new(0, Settings.Healthbar.Thickness, 1, 0)
+		hb.Parent = Items.Left
+	elseif pos == "Right" then
+		hb.Size = UDim2.new(0, Settings.Healthbar.Thickness, 1, 0)
+		hb.Parent = Items.Right
+	elseif pos == "Top" then
+		hb.Size = UDim2.new(1, 0, 0, Settings.Healthbar.Thickness)
+		hb.Parent = Items.Top
+	else
+		hb.Size = UDim2.new(1, 0, 0, Settings.Healthbar.Thickness)
+		hb.Parent = Items.Bottom
+	end
+
+	Items.Healthbar = hb
+	Items.HealthbarAccent = accent
+	Items.HealthbarFade = fade
+end
+
+local function CreateHealthText(Items)
+	local container = Instance.new("Frame")
+	container.Name = "HealthTextContainer"
+	container.BackgroundTransparency = 1
+	container.Size = UDim2.new(0, 28, 0, 11)
+	container.LayoutOrder = 0
+	container.Parent = Items.Left
+
+	local text = Instance.new("TextLabel")
+	text.Name = "HealthText"
+	text.BackgroundTransparency = 1
+	text.Size = UDim2.new(1, 0, 1, 0)
+	text.Position = UDim2.fromOffset(2, -2)
+	text.Text = "100"
+	text.TextSize = Settings.HealthText.Size
+	text.TextColor3 = Settings.HealthText.Color
+	text.TextXAlignment = Enum.TextXAlignment.Right
+	text.TextYAlignment = Enum.TextYAlignment.Top
+	text.ZIndex = 5
+	text.Parent = container
+	ApplyFont(text)
+
+	if Settings.HealthText.Outline then
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 1
+		stroke.Color = Color3.fromRGB(0, 0, 0)
+		stroke.LineJoinMode = Enum.LineJoinMode.Miter
+		stroke.Parent = text
+	end
+
+	local damageStack = Instance.new("Frame")
+	damageStack.Name = "DamageStack"
+	damageStack.BackgroundTransparency = 1
+	damageStack.Size = UDim2.new(1, 0, 0, 40)
+	damageStack.Position = UDim2.new(0, Settings.HealthChange.OffsetX, 1, Settings.HealthChange.OffsetY)
+	damageStack.ZIndex = 6
+	damageStack.Parent = container
+
+	local stackLayout = Instance.new("UIListLayout")
+	stackLayout.FillDirection = Enum.FillDirection.Vertical
+	stackLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	stackLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+	stackLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	stackLayout.Padding = UDim.new(0, Settings.HealthChange.Spacing)
+	stackLayout.Parent = damageStack
+
+	Items.HealthText = text
+	Items.DamageStack = damageStack
+end
+
+-- ========== NPC DETECTION ==========
+local function hasHealthSystem(obj)
+	if obj:FindFirstChildOfClass("Humanoid") then return true end
+	if obj:GetAttribute("Health") ~= nil or obj:GetAttribute("MaxHealth") ~= nil then return true end
+	if obj:FindFirstChild("Health") and (obj.Health:IsA("NumberValue") or obj.Health:IsA("IntValue")) then return true end
+	if obj:FindFirstChild("MaxHealth") and (obj.MaxHealth:IsA("NumberValue") or obj.MaxHealth:IsA("IntValue")) then return true end
+	local healthFolder = obj:FindFirstChild("Health") or obj:FindFirstChild("Stats") or obj:FindFirstChild("Data")
+	if healthFolder then
+		if healthFolder:FindFirstChild("Health") or healthFolder:FindFirstChild("MaxHealth") then return true end
+	end
+	return false
+end
+
+local function isPlayerCharacter(model)
+	return Players:GetPlayerFromCharacter(model) ~= nil
+end
+
+local function getNPCHealth(model)
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		return humanoid.Health, humanoid.MaxHealth, humanoid
+	end
+
+	local health, maxHealth = 100, 100
+
+	local hAttr = model:GetAttribute("Health")
+	local mAttr = model:GetAttribute("MaxHealth")
+	if hAttr ~= nil then health = hAttr end
+	if mAttr ~= nil then maxHealth = mAttr end
+
+	local hVal = model:FindFirstChild("Health")
+	if hVal and (hVal:IsA("NumberValue") or hVal:IsA("IntValue")) then
+		health = hVal.Value
+	end
+	local mVal = model:FindFirstChild("MaxHealth")
+	if mVal and (mVal:IsA("NumberValue") or mVal:IsA("IntValue")) then
+		maxHealth = mVal.Value
+	end
+
+	local folder = model:FindFirstChild("Health") or model:FindFirstChild("Stats") or model:FindFirstChild("Data")
+	if folder then
+		local fh = folder:FindFirstChild("Health")
+		local fm = folder:FindFirstChild("MaxHealth")
+		if fh and (fh:IsA("NumberValue") or fh:IsA("IntValue")) then health = fh.Value end
+		if fm and (fm:IsA("NumberValue") or fm:IsA("IntValue")) then maxHealth = fm.Value end
+	end
+
+	return health, maxHealth, nil
+end
+
+local function getNPCRoot(model)
+	return model:FindFirstChild("HumanoidRootPart")
+		or model.PrimaryPart
+		or model:FindFirstChild("Torso")
+		or model:FindFirstChild("UpperTorso")
+		or model:FindFirstChildWhichIsA("BasePart")
+end
+
+-- ========== FRIEND CHECK ==========
+local function updateFriendCache(player)
+	if FriendCache[player.UserId] ~= nil then return end
+	task.spawn(function()
+		local ok, isFriend = pcall(function()
+			return LocalPlayer:IsFriendsWith(player.UserId)
+		end)
+		FriendCache[player.UserId] = ok and isFriend or false
+	end)
+end
+
+-- ========== SHARED UI BUILDERS ==========
+local function CreateNameTag(Items, color)
+	local label = CreateOutlinedText(Items.Top, "NameTag", Settings.Name.Size, color or Settings.Name.Color, Settings.Name.Outline)
+	label.LayoutOrder = 0
+	Items.NameTag = label
+end
+
+local function CreateToolTag(Items)
+	local label = CreateOutlinedText(Items.Bottom, "ToolTag", Settings.Tool.Size, Settings.Tool.Color, Settings.Tool.Outline)
+	label.LayoutOrder = 0
+	Items.ToolTag = label
+end
+
+local function CreateDistanceTag(Items)
+	local label = CreateOutlinedText(Items.Bottom, "DistanceTag", Settings.Distance.Size, Settings.Distance.Color, Settings.Distance.Outline)
+	label.LayoutOrder = 1
+	Items.DistanceTag = label
+end
+
+-- ========== PLAYER DATA ==========
+local function CreatePlayerData(player)
+	if PlayerData[player] then return end
+
+	updateFriendCache(player)
+
+	local data = {
+		Player = player,
+		Items = {},
+		Info = {},
+		HealthTween = nil,
+		LastHealth = nil,
+		DamageIndicators = {},
+		DamageOrder = 0,
+		Connections = {},
+		IsDead = false,
+		DeathStarted = false,
+		FrozenTop = nil,
+		FrozenBottom = nil,
+	}
+
+	local items = data.Items
+
+	local holder = Instance.new("Frame")
+	holder.Name = player.Name
+	holder.BackgroundTransparency = 1
+	holder.BorderSizePixel = 0
+	holder.Visible = false
+	holder.ZIndex = 1
+	holder.Parent = ScreenGui
+	items.Holder = holder
+
+	local sideItems = CreateSideFrames(holder)
+	for k, v in pairs(sideItems) do items[k] = v end
+
+	if Settings.Healthbar.Enabled then CreateHealthbar(items) end
+	if Settings.HealthText.Enabled then CreateHealthText(items) end
+	if Settings.Name.Enabled then CreateNameTag(items) end
+	if Settings.Tool.Enabled then CreateToolTag(items) end
+	if Settings.Distance.Enabled then CreateDistanceTag(items) end
+
+	data.ResetVisuals = function()
+		for _, entry in ipairs(data.DamageIndicators) do
+			if entry.Instance then entry.Instance:Destroy() end
+		end
+		table.clear(data.DamageIndicators)
+
+		if items.Healthbar then items.Healthbar.BackgroundTransparency = 0 end
+		if items.HealthbarAccent then items.HealthbarAccent.BackgroundTransparency = 0 end
+		if items.HealthbarFade then items.HealthbarFade.BackgroundTransparency = 0 end
+		if items.HealthText then items.HealthText.TextTransparency = 0 end
+		local stroke = items.HealthText and items.HealthText:FindFirstChildOfClass("UIStroke")
+		if stroke then stroke.Transparency = 0 end
+		if items.NameTag then items.NameTag.TextTransparency = 0 end
+		if items.ToolTag then items.ToolTag.TextTransparency = 0 end
+		if items.DistanceTag then items.DistanceTag.TextTransparency = 0 end
+
+		data.IsDead = false
+		data.DeathStarted = false
+		data.FrozenTop = nil
+		data.FrozenBottom = nil
+	end
+
+	data.AddHealthChange = function(delta)
+		if data.IsDead or not Settings.HealthChange.Enabled or not items.DamageStack then return end
+		if math.abs(delta) < 0.5 then return end
+
+		while #data.DamageIndicators >= Settings.HealthChange.MaxVisible do
+			local oldest = table.remove(data.DamageIndicators, 1)
+			if oldest and oldest.Instance then oldest.Instance:Destroy() end
+		end
+
+		data.DamageOrder = data.DamageOrder - 1
+
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Size = UDim2.new(1, 0, 0, 9)
+		label.Text = (delta > 0 and "+" or "") .. tostring(math.floor(delta + 0.5))
+		label.TextSize = Settings.HealthChange.TextSize
+		label.TextColor3 = delta > 0 and Settings.HealthChange.HealColor or Settings.HealthChange.DamageColor
+		label.TextXAlignment = Enum.TextXAlignment.Right
+		label.TextYAlignment = Enum.TextYAlignment.Top
+		label.TextTransparency = 0
+		label.ZIndex = 7
+		label.LayoutOrder = data.DamageOrder
+		label.Parent = items.DamageStack
+		ApplyFont(label)
+
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 1
+		stroke.Color = Color3.fromRGB(0, 0, 0)
+		stroke.LineJoinMode = Enum.LineJoinMode.Miter
+		stroke.Transparency = 0
+		stroke.Parent = label
+
+		table.insert(data.DamageIndicators, {Instance = label, Stroke = stroke})
+
+		task.delay(Settings.HealthChange.HoldTime, function()
+			if not label or not label.Parent then return end
+			local fadeInfo = TweenInfo.new(Settings.HealthChange.FadeTime, Enum.EasingStyle.Linear)
+			local t1 = TweenService:Create(label, fadeInfo, {TextTransparency = 1})
+			local t2 = TweenService:Create(stroke, fadeInfo, {Transparency = 1})
+			t1:Play()
+			t2:Play()
+			t1.Completed:Connect(function()
+				if label and label.Parent then label:Destroy() end
+				for i, v in ipairs(data.DamageIndicators) do
+					if v.Instance == label then
+						table.remove(data.DamageIndicators, i)
+						break
+					end
+				end
+			end)
+		end)
+	end
+
+	data.StartDeathEffect = function()
+		if data.DeathStarted then return end
+		data.DeathStarted = true
+		data.IsDead = true
+
+		if not Settings.Death.Enabled then
+			if items.Holder then items.Holder.Visible = false end
+			return
+		end
+
+		if data.Info.RootPart then
+			local root = data.Info.RootPart
+			data.FrozenTop = root.Position + (root.CFrame.UpVector * 1.8)
+			data.FrozenBottom = root.Position - (root.CFrame.UpVector * 2.5)
+		end
+
+		task.delay(Settings.Death.HoldTime, function()
+			if not items.Holder or not items.Holder.Parent then return end
+			local fadeInfo = TweenInfo.new(Settings.Death.FadeTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+			for _, obj in ipairs(items.Holder:GetDescendants()) do
+				if obj:IsA("Frame") then
+					TweenService:Create(obj, fadeInfo, {BackgroundTransparency = 1}):Play()
+				elseif obj:IsA("TextLabel") then
+					TweenService:Create(obj, fadeInfo, {TextTransparency = 1}):Play()
+					local s = obj:FindFirstChildOfClass("UIStroke")
+					if s then TweenService:Create(s, fadeInfo, {Transparency = 1}):Play() end
+				elseif obj:IsA("UIStroke") then
+					TweenService:Create(obj, fadeInfo, {Transparency = 1}):Play()
+				end
+			end
+			task.delay(Settings.Death.FadeTime + 0.05, function()
+				if items.Holder then items.Holder.Visible = false end
+				for _, entry in ipairs(data.DamageIndicators) do
+					if entry.Instance then entry.Instance:Destroy() end
+				end
+				table.clear(data.DamageIndicators)
+			end)
+		end)
+	end
+
+	data.UpdateHealth = function(health, maxHealth)
+		if data.IsDead or not Settings.Healthbar.Enabled or not items.HealthbarFade then return end
+		maxHealth = maxHealth or 100
+		local ratio = math.clamp(health / maxHealth, 0, 1)
+		local isHorizontal = Settings.Healthbar.Position == "Top" or Settings.Healthbar.Position == "Bottom"
+		local targetSize, targetPos
+		if isHorizontal then
+			targetSize = UDim2.new(1 - ratio, -2 * (1 - ratio), 1, -2)
+			targetPos = UDim2.new(ratio, 1, 0, 1)
+		else
+			targetSize = UDim2.new(1, -2, 1 - ratio, -2 * (1 - ratio))
+			targetPos = UDim2.new(0, 1, 0, 1)
+		end
+
+		if Settings.Healthbar.Tween then
+			if data.HealthTween then data.HealthTween:Cancel() end
+			local info = TweenInfo.new(Settings.Healthbar.TweenSpeed, Settings.Healthbar.EasingStyle, Settings.Healthbar.EasingDirection)
+			data.HealthTween = TweenService:Create(items.HealthbarFade, info, {Size = targetSize, Position = targetPos})
+			data.HealthTween:Play()
+		else
+			items.HealthbarFade.Size = targetSize
+			items.HealthbarFade.Position = targetPos
+		end
+
+		if items.HealthText then
+			items.HealthText.Text = tostring(math.floor(health + 0.5))
+		end
+
+		if data.LastHealth ~= nil then
+			local delta = health - data.LastHealth
+			if math.abs(delta) >= 1 then data.AddHealthChange(delta) end
+		end
+		data.LastHealth = health
+		if health <= 0 then data.StartDeathEffect() end
+	end
+
+	data.UpdateExtras = function(distance)
+		if data.IsDead then return end
+
+		if items.NameTag and Settings.Name.Enabled then
+			local isFriend = Settings.FriendName.Enabled and FriendCache[player.UserId]
+			if isFriend then
+				items.NameTag.Text = Settings.FriendName.Text
+				items.NameTag.TextColor3 = Settings.FriendName.Color
+			else
+				items.NameTag.TextColor3 = Settings.Name.Color
+				local mode = Settings.Name.Mode
+				if mode == "DisplayName" then
+					items.NameTag.Text = player.DisplayName
+				elseif mode == "Username" then
+					items.NameTag.Text = player.Name
+				else
+					if player.DisplayName ~= player.Name then
+						items.NameTag.Text = player.DisplayName .. " (@" .. player.Name .. ")"
+					else
+						items.NameTag.Text = player.Name
+					end
+				end
+			end
+		end
+
+		if items.ToolTag and Settings.Tool.Enabled then
+			local toolName = ""
+			if data.Info.Character then
+				local tool = data.Info.Character:FindFirstChildOfClass("Tool")
+				if tool then toolName = tool.Name end
+			end
+			items.ToolTag.Text = toolName
+			items.ToolTag.Visible = toolName ~= ""
+		end
+
+		if items.DistanceTag and Settings.Distance.Enabled and distance then
+			items.DistanceTag.Text = math.floor(distance + 0.5) .. Settings.Distance.Suffix
+		end
+	end
+
+	data.RefreshCharacter = function()
+		local character = player.Character
+		if not character then return end
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if not humanoid then
+			humanoid = character:WaitForChild("Humanoid", 5)
+			if not humanoid then return end
+		end
+
+		data.ResetVisuals()
+		data.Info.Character = character
+		data.Info.Humanoid = humanoid
+		data.Info.RootPart = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("HumanoidRootPart", 3)
+
+		if data.HealthConn then data.HealthConn:Disconnect() data.HealthConn = nil end
+		data.LastHealth = humanoid.Health
+
+		data.HealthConn = humanoid.HealthChanged:Connect(function(h)
+			data.UpdateHealth(h, humanoid.MaxHealth)
+		end)
+
+		local diedConn = humanoid.Died:Connect(function()
+			data.StartDeathEffect()
+		end)
+		table.insert(data.Connections, diedConn)
+
+		data.UpdateHealth(humanoid.Health, humanoid.MaxHealth)
+	end
+
+	data.Destroy = function()
+		for _, conn in ipairs(data.Connections) do
+			if typeof(conn) == "RBXScriptConnection" and conn.Connected then conn:Disconnect() end
+		end
+		table.clear(data.Connections)
+		if data.HealthConn then data.HealthConn:Disconnect() data.HealthConn = nil end
+		if data.HealthTween then data.HealthTween:Cancel() data.HealthTween = nil end
+		for _, entry in ipairs(data.DamageIndicators) do
+			if entry.Instance then entry.Instance:Destroy() end
+		end
+		table.clear(data.DamageIndicators)
+		if items.Holder then items.Holder:Destroy() end
+		PlayerData[player] = nil
+	end
+
+	local charConn = player.CharacterAdded:Connect(function()
+		task.defer(function() data.RefreshCharacter() end)
+	end)
+	table.insert(data.Connections, charConn)
+
+	if player.Character then
+		task.defer(function() data.RefreshCharacter() end)
+	end
+
+	PlayerData[player] = data
+end
+
+-- ========== NPC DATA ==========
+local function CreateNPCData(model)
+	if NPCData[model] or not Settings.NPC.Enabled then return end
+	if not hasHealthSystem(model) then return end
+	if isPlayerCharacter(model) then return end
+
+	local root = getNPCRoot(model)
+	if not root then return end
+
+	local data = {
+		Model = model,
+		Items = {},
+		Info = {},
+		HealthTween = nil,
+		LastHealth = nil,
+		IsDead = false,
+		DeathStarted = false,
+		FrozenTop = nil,
+		FrozenBottom = nil,
+		Connections = {},
+	}
+
+	local items = data.Items
+
+	local holder = Instance.new("Frame")
+	holder.Name = "NPC_" .. model.Name
+	holder.BackgroundTransparency = 1
+	holder.BorderSizePixel = 0
+	holder.Visible = false
+	holder.ZIndex = 1
+	holder.Parent = ScreenGui
+	items.Holder = holder
+
+	local sideItems = CreateSideFrames(holder)
+	for k, v in pairs(sideItems) do items[k] = v end
+
+	if Settings.NPC.ShowHealthbar and Settings.Healthbar.Enabled then
+		CreateHealthbar(items)
+	end
+	if Settings.NPC.ShowHealthText and Settings.HealthText.Enabled then
+		CreateHealthText(items)
+	end
+	if Settings.NPC.ShowName then
+		local label = CreateOutlinedText(items.Top, "NameTag", Settings.NPC.NameSize, Settings.NPC.NameColor, true)
+		label.LayoutOrder = 0
+		items.NameTag = label
+	end
+	if Settings.NPC.ShowDistance and Settings.Distance.Enabled then
+		CreateDistanceTag(items)
+	end
+
+	data.UpdateHealth = function(health, maxHealth)
+		if data.IsDead or not items.HealthbarFade then return end
+		maxHealth = maxHealth or 100
+		local ratio = math.clamp(health / maxHealth, 0, 1)
+		local targetSize = UDim2.new(1, -2, 1 - ratio, -2 * (1 - ratio))
+		local targetPos = UDim2.new(0, 1, 0, 1)
+
+		if Settings.Healthbar.Tween then
+			if data.HealthTween then data.HealthTween:Cancel() end
+			local info = TweenInfo.new(Settings.Healthbar.TweenSpeed, Settings.Healthbar.EasingStyle, Settings.Healthbar.EasingDirection)
+			data.HealthTween = TweenService:Create(items.HealthbarFade, info, {Size = targetSize, Position = targetPos})
+			data.HealthTween:Play()
+		else
+			items.HealthbarFade.Size = targetSize
+			items.HealthbarFade.Position = targetPos
+		end
+
+		if items.HealthText then
+			items.HealthText.Text = tostring(math.floor(health + 0.5))
+		end
+		data.LastHealth = health
+	end
+
+	data.StartDeathEffect = function()
+		if data.DeathStarted then return end
+		data.DeathStarted = true
+		data.IsDead = true
+		if not Settings.Death.Enabled then
+			if items.Holder then items.Holder.Visible = false end
+			return
+		end
+		if data.Info.RootPart then
+			local root = data.Info.RootPart
+			data.FrozenTop = root.Position + (root.CFrame.UpVector * 1.8)
+			data.FrozenBottom = root.Position - (root.CFrame.UpVector * 2.5)
+		end
+		task.delay(Settings.Death.HoldTime, function()
+			if not items.Holder or not items.Holder.Parent then return end
+			local fadeInfo = TweenInfo.new(Settings.Death.FadeTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+			for _, obj in ipairs(items.Holder:GetDescendants()) do
+				if obj:IsA("Frame") then
+					TweenService:Create(obj, fadeInfo, {BackgroundTransparency = 1}):Play()
+				elseif obj:IsA("TextLabel") then
+					TweenService:Create(obj, fadeInfo, {TextTransparency = 1}):Play()
+					local s = obj:FindFirstChildOfClass("UIStroke")
+					if s then TweenService:Create(s, fadeInfo, {Transparency = 1}):Play() end
+				end
+			end
+			task.delay(Settings.Death.FadeTime + 0.05, function()
+				if data.Destroy then data.Destroy() end
+			end)
+		end)
+	end
+
+	data.Refresh = function()
+		if not model or not model.Parent then
+			if data.Destroy then data.Destroy() end
+			return
+		end
+		data.Info.RootPart = getNPCRoot(model)
+		local health, maxHealth, humanoid = getNPCHealth(model)
+		data.Info.Humanoid = humanoid
+		data.UpdateHealth(health, maxHealth)
+		if health <= 0 then
+			data.StartDeathEffect()
+		end
+	end
+
+	data.Destroy = function()
+		for _, conn in ipairs(data.Connections) do
+			if typeof(conn) == "RBXScriptConnection" and conn.Connected then conn:Disconnect() end
+		end
+		table.clear(data.Connections)
+		if data.HealthTween then data.HealthTween:Cancel() end
+		if items.Holder then items.Holder:Destroy() end
+		NPCData[model] = nil
+	end
+
+	-- listen for removal
+	local ancestryConn = model.AncestryChanged:Connect(function(_, parent)
+		if not parent then
+			if data.Destroy then data.Destroy() end
+		end
+	end)
+	table.insert(data.Connections, ancestryConn)
+
+	data.Refresh()
+	NPCData[model] = data
+end
+
+local function ScanNPCs()
+	if not Settings.NPC.Enabled then return end
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		if obj:IsA("Model") and not isPlayerCharacter(obj) and hasHealthSystem(obj) then
+			if not NPCData[obj] then
+				CreateNPCData(obj)
+			end
+		end
+	end
+end
+
+-- ========== UPDATE LOOP ==========
+local function Update()
+	if not Settings.Main.Enabled then
+		for _, data in pairs(PlayerData) do
+			if data.Items and data.Items.Holder then data.Items.Holder.Visible = false end
+		end
+		for _, data in pairs(NPCData) do
+			if data.Items and data.Items.Holder then data.Items.Holder.Visible = false end
+		end
+		return
+	end
+
+	Camera = workspace.CurrentCamera
+
+	-- Players
+	for player, data in pairs(PlayerData) do
+		local info = data.Info
+		local holder = data.Items and data.Items.Holder
+		if not holder then continue end
+
+		if data.IsDead then
+			if Settings.Death.Enabled and data.FrozenTop and data.FrozenBottom then
+				local boxSize, boxPos, onScreen, distance = CalculateBoxFromWorld(data.FrozenTop, data.FrozenBottom)
+				if onScreen and distance <= Settings.Main.RenderDistance then
+					holder.Visible = true
+					holder.Position = UDim2.fromOffset(boxPos.X, boxPos.Y)
+					holder.Size = UDim2.fromOffset(boxSize.X, boxSize.Y)
+				else
+					holder.Visible = false
+				end
+			else
+				holder.Visible = false
+			end
+			continue
+		end
+
+		if not info.Character or not info.Humanoid or not info.RootPart or info.Humanoid.Health <= 0 then
+			if info.Humanoid and info.Humanoid.Health <= 0 and not data.DeathStarted then
+				data.StartDeathEffect()
+			else
+				holder.Visible = false
+			end
+			continue
+		end
+
+		local boxSize, boxPos, onScreen, distance = CalculateBox(info.RootPart)
+		if onScreen and distance <= Settings.Main.RenderDistance then
+			holder.Visible = true
+			holder.Position = UDim2.fromOffset(boxPos.X, boxPos.Y)
+			holder.Size = UDim2.fromOffset(boxSize.X, boxSize.Y)
+			data.UpdateExtras(distance)
+		else
+			holder.Visible = false
+		end
+	end
+
+	-- NPCs
+	if Settings.NPC.Enabled then
+		for model, data in pairs(NPCData) do
+			local holder = data.Items and data.Items.Holder
+			if not holder then continue end
+
+			if data.IsDead then
+				if Settings.Death.Enabled and data.FrozenTop and data.FrozenBottom then
+					local boxSize, boxPos, onScreen, distance = CalculateBoxFromWorld(data.FrozenTop, data.FrozenBottom)
+					if onScreen and distance <= Settings.Main.RenderDistance then
+						holder.Visible = true
+						holder.Position = UDim2.fromOffset(boxPos.X, boxPos.Y)
+						holder.Size = UDim2.fromOffset(boxSize.X, boxSize.Y)
+					else
+						holder.Visible = false
+					end
+				else
+					holder.Visible = false
+				end
+				continue
+			end
+
+			if not model.Parent then
+				data.Destroy()
+				continue
+			end
+
+			data.Refresh()
+
+			local root = data.Info.RootPart
+			if not root then
+				holder.Visible = false
+				continue
+			end
+
+			local boxSize, boxPos, onScreen, distance = CalculateBox(root)
+			if onScreen and distance <= Settings.Main.RenderDistance then
+				holder.Visible = true
+				holder.Position = UDim2.fromOffset(boxPos.X, boxPos.Y)
+				holder.Size = UDim2.fromOffset(boxSize.X, boxSize.Y)
+
+				if data.Items.NameTag then
+					data.Items.NameTag.Text = model.Name
+				end
+				if data.Items.DistanceTag and distance then
+					data.Items.DistanceTag.Text = math.floor(distance + 0.5) .. Settings.Distance.Suffix
+				end
+			else
+				holder.Visible = false
+			end
+		end
+	end
+end
+
+local function Initialize()
+	for _, player in ipairs(Players:GetPlayers()) do
+		if Settings.Main.IncludeLocalPlayer or player ~= LocalPlayer then
+			CreatePlayerData(player)
+		end
+	end
+
+	local added = Players.PlayerAdded:Connect(function(player)
+		if Settings.Main.IncludeLocalPlayer or player ~= LocalPlayer then
+			task.defer(function()
+				CreatePlayerData(player)
+			end)
+		end
+	end)
+	table.insert(GlobalConnections, added)
+
+	local removing = Players.PlayerRemoving:Connect(function(player)
+		local data = PlayerData[player]
+		if data and data.Destroy then data.Destroy() end
+		FriendCache[player.UserId] = nil
+	end)
+	table.insert(GlobalConnections, removing)
+
+	-- NPC scanning
+	if Settings.NPC.Enabled then
+		ScanNPCs()
+		local npcScanConn = RunService.Heartbeat:Connect(function()
+			-- light scan every ~2s
+		end)
+		-- better: periodic scan
+		task.spawn(function()
+			while ScreenGui and ScreenGui.Parent do
+				ScanNPCs()
+				task.wait(2)
+			end
+		end)
+
+		local descConn = workspace.DescendantAdded:Connect(function(obj)
+			if obj:IsA("Model") and Settings.NPC.Enabled then
+				task.defer(function()
+					if hasHealthSystem(obj) and not isPlayerCharacter(obj) then
+						CreateNPCData(obj)
+					end
+				end)
+			end
+		end)
+		table.insert(GlobalConnections, descConn)
+	end
+
+	RunService:BindToRenderStep(RENDER_NAME, Enum.RenderPriority.Camera.Value + 1, Update)
+end
+
+Initialize()
